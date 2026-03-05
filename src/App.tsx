@@ -444,7 +444,7 @@ function App() {
         const options = {
           margin: 10,
           filename: pdfFilename,
-          image: { type: "png", quality: 1.0 },
+          image: { type: "png" as const, quality: 1.0 },
           html2canvas: {
             scale: 2,
             useCORS: true,
@@ -454,12 +454,9 @@ function App() {
           },
           jsPDF: {
             unit: "px",
-            format: [contentWidth + 40, contentHeight + 40],
-            orientation: "portrait",
-            compress: true,
-            hotfixes: ["px_scaling"],
+            format: [contentWidth + 40, contentHeight + 40] as [number, number],
+            orientation: "portrait" as const,
           },
-          pagebreak: { mode: "avoid-all" },
         };
 
         html2pdf()
