@@ -1,33 +1,37 @@
 import React, { useEffect } from 'react';
-import { Box, Typography, Grid, Button, FormControl, InputLabel, MenuItem, Select, TextField, Paper, SelectChangeEvent } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs from 'dayjs';
+import {
+  Button,
+  Card,
+  CardBody,
+  DatePicker,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
+  Grid,
+  GridItem,
+  TextInput,
+  Title,
+} from '@patternfly/react-core';
 import { ReportData } from '../../types/ReportTypes';
 import { generateTimelineDates, generateTimelineDatesFromSprints, findCurrentTimelinePosition } from './DateUtils';
 
-/**
- * Calculate the maximum sprint number based on project duration and sprint length
- */
 const getMaxSprintNumber = (reportData: ReportData): number => {
   if (!reportData.projectStartDate || !reportData.projectEndDate) {
-    return 8; // Fallback to original hardcoded value
+    return 8;
   }
-  
-  // Calculate total project duration in days
   const projectDuration = Math.ceil(
     (reportData.projectEndDate.getTime() - reportData.projectStartDate.getTime()) / (1000 * 60 * 60 * 24)
   );
-  
-  // Convert days to weeks
   const projectWeeks = Math.ceil(projectDuration / 7);
-  
-  // Calculate max sprint number based on weeks and sprint duration
   const maxSprint = Math.ceil(projectWeeks / reportData.sprintDuration);
-  
-  // Return at least 1 sprint
   return Math.max(maxSprint, 1);
+};
+
+const formatDate = (date: Date): string => {
+  const d = date.getDate().toString().padStart(2, '0');
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const y = date.getFullYear();
+  return `${y}-${m}-${d}`;
 };
 
 interface TimelineFormProps {
@@ -38,27 +42,20 @@ interface TimelineFormProps {
 }
 
 const TimelineForm: React.FC<TimelineFormProps> = ({ reportData, onDataChange, onPrevStep, onNextStep }) => {
-  // Auto-generate timeline when component mounts or when specific project details change
   useEffect(() => {
-    // Check if we have predefined sprints
     if (reportData.projectSprints && reportData.projectSprints.length > 0 && reportData.timelineDates.length === 0) {
-      // Generate timeline from sprint definitions
       const newDates = generateTimelineDatesFromSprints(reportData.projectSprints);
-      
       onDataChange({
         timelineDates: newDates,
         currentTimelinePosition: findCurrentTimelinePosition(newDates, reportData.reportDate)
       });
-    } 
-    // Fallback to the original method if no sprints defined
-    else if (reportData.timelineDates.length === 0 && reportData.projectStartDate && reportData.projectEndDate) {
+    } else if (reportData.timelineDates.length === 0 && reportData.projectStartDate && reportData.projectEndDate) {
       const newDates = generateTimelineDates(
         reportData.projectStartDate,
         reportData.projectEndDate,
         reportData.sprintDuration,
         reportData.sprintStart || 1
       );
-
       onDataChange({
         timelineDates: newDates,
         currentTimelinePosition: findCurrentTimelinePosition(newDates, reportData.reportDate)
@@ -68,213 +65,169 @@ const TimelineForm: React.FC<TimelineFormProps> = ({ reportData, onDataChange, o
   }, [reportData.projectSprints, reportData.projectStartDate, reportData.projectEndDate]);
 
   return (
-    <Box>
-      <Typography variant="h6" gutterBottom sx={{ mb: 3, color: 'var(--primary-blue)' }}>
+    <div>
+      <Title headingLevel="h3" style={{ marginBottom: '16px', color: 'var(--primary-blue)' }}>
         Sprint Information
-      </Typography>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Grid container spacing={3} sx={{ mt: 2 }}>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel id="current-sprint-label">Current Sprint</InputLabel>
-                <Select
-                  labelId="current-sprint-label"
-                  value={reportData.currentSprint}
-                  label="Current Sprint"
-                  onChange={(e: SelectChangeEvent<number>) => {
-                    onDataChange({ currentSprint: Number(e.target.value) });
+      </Title>
+
+      <Grid hasGutter>
+        <GridItem span={12}>
+          <Grid hasGutter style={{ marginTop: '16px' }}>
+            <GridItem span={12} sm={6}>
+              <FormGroup label="Current Sprint" fieldId="timeline-current-sprint">
+                <FormSelect
+                  id="timeline-current-sprint"
+                  value={String(reportData.currentSprint)}
+                  onChange={(_event, value) => {
+                    onDataChange({ currentSprint: Number(value) });
                   }}
+                  aria-label="Current Sprint"
                 >
-                  {/* Use predefined sprints from project details */}
                   {reportData.projectSprints && reportData.projectSprints.length > 0 ? (
                     reportData.projectSprints.map((sprint) => (
-                      <MenuItem key={sprint.number} value={sprint.number}>
-                        {sprint.name}
-                      </MenuItem>
+                      <FormSelectOption key={sprint.number} value={String(sprint.number)} label={sprint.name} />
                     ))
                   ) : (
-                    // Fall back to the old method if no sprints are defined
                     Array.from({ length: getMaxSprintNumber(reportData) }).map((_, index) => (
-                      <MenuItem key={index + 1} value={index + 1}>Sprint {index + 1}</MenuItem>
+                      <FormSelectOption key={index + 1} value={String(index + 1)} label={`Sprint ${index + 1}`} />
                     ))
                   )}
-                </Select>
-              </FormControl>
-            </Grid>
+                </FormSelect>
+              </FormGroup>
+            </GridItem>
 
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel id="status-label">Project Status</InputLabel>
-                <Select
-                  labelId="status-label"
+            <GridItem span={12} sm={6}>
+              <FormGroup label="Project Status" fieldId="timeline-status">
+                <FormSelect
+                  id="timeline-status"
                   value={reportData.status}
-                  label="Project Status"
-                  onChange={(e) => {
-                    onDataChange({
-                      status: e.target.value as 'on-track' | 'at-risk' | 'delayed'
-                    });
+                  onChange={(_event, value) => {
+                    onDataChange({ status: value as 'on-track' | 'at-risk' | 'delayed' });
                   }}
+                  aria-label="Project Status"
                 >
-                  <MenuItem value="on-track">On Track</MenuItem>
-                  <MenuItem value="at-risk">At Risk</MenuItem>
-                  <MenuItem value="delayed">Delayed</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+                  <FormSelectOption value="on-track" label="On Track" />
+                  <FormSelectOption value="at-risk" label="At Risk" />
+                  <FormSelectOption value="delayed" label="Delayed" />
+                </FormSelect>
+              </FormGroup>
+            </GridItem>
           </Grid>
-        </Grid>
+        </GridItem>
 
-        <Grid item xs={12}>
-          <Typography variant="h6" gutterBottom sx={{ mb: 3, color: 'var(--primary-blue)' }}>
+        <GridItem span={12}>
+          <Title headingLevel="h3" style={{ marginBottom: '16px', color: 'var(--primary-blue)' }}>
             Timeline and Sprint Mapping
-          </Typography>
-          <Box sx={{ mb: 2 }}>
-            <Paper elevation={0} sx={{ p: 2, bgcolor: '#f5f5f5', border: '1px solid #e0e0e0', borderRadius: 1, mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Timeline for {reportData.projectTitle}
-              </Typography>
-              <Typography variant="body2">
-                {reportData.projectSprints && reportData.projectSprints.length > 0 
+          </Title>
+
+          <Card isPlain style={{ backgroundColor: '#f5f5f5', border: '1px solid #e0e0e0', marginBottom: '16px' }}>
+            <CardBody>
+              <strong>Timeline for {reportData.projectTitle}</strong>
+              <p style={{ marginTop: '4px', fontSize: '14px' }}>
+                {reportData.projectSprints && reportData.projectSprints.length > 0
                   ? "Timeline is auto-generated based on predefined sprint dates from project configuration."
                   : `Timeline is auto-generated with sprint duration of ${reportData.sprintDuration} weeks.`}
-              </Typography>
-            </Paper>
-          </Box>
+              </p>
+            </CardBody>
+          </Card>
 
-          {/* Group timeline dates by sprint */}
           {reportData.projectSprints && reportData.projectSprints.map((sprint) => {
-            // Find all timeline dates for this sprint
             const sprintDates = reportData.timelineDates.filter(
               weekItem => weekItem.sprintNumber === sprint.number
             );
-            
-            // Only render if there are dates for this sprint
             if (sprintDates.length === 0) return null;
-            
+
             return (
-              <Box key={sprint.number} sx={{
-                mb: 3,
-                p: 2,
+              <div key={sprint.number} style={{
+                marginBottom: '24px',
+                padding: '16px',
                 border: '1px solid #e0e0e0',
-                borderRadius: 1,
+                borderRadius: '4px',
                 borderLeft: '3px solid #3498db',
-                bgcolor: '#f8fbff'
+                backgroundColor: '#f8fbff'
               }}>
-                <Typography 
-                  variant="subtitle1" 
-                  sx={{ mb: 2, color: '#3498db', fontWeight: 'bold' }}
-                >
+                <strong style={{ color: '#3498db', marginBottom: '8px', display: 'block' }}>
                   {sprint.name}: {new Date(sprint.startDate).toLocaleDateString()} - {new Date(sprint.endDate).toLocaleDateString()}
-                </Typography>
-                
+                </strong>
+
                 {sprintDates.map((weekItem, index) => (
-                  <Box key={index} sx={{
-                    display: 'flex',
-                    mb: 1,
-                    alignItems: 'center',
-                  }}>
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                      <DatePicker
-                        label={weekItem.isSprintStart ? "Sprint Start" : "Sprint Date"}
-                        value={dayjs(weekItem.date)}
-                        readOnly
-                        slotProps={{ textField: { fullWidth: true, size: "small" } }}
-                      />
-                    </LocalizationProvider>
-                    <TextField
+                  <div key={index} style={{ display: 'flex', marginBottom: '8px', alignItems: 'center', gap: '8px' }}>
+                    <DatePicker
+                      value={formatDate(weekItem.date)}
+                      isDisabled
+                      aria-label={weekItem.isSprintStart ? "Sprint Start" : "Sprint Date"}
+                    />
+                    <TextInput
                       value={weekItem.label}
-                      label="Label"
-                      size="small"
-                      sx={{ width: '120px', ml: 1 }}
-                      onChange={(e) => {
-                        // Just update the label without changing sprint assignments
+                      type="text"
+                      aria-label="Label"
+                      style={{ width: '120px' }}
+                      onChange={(_event, value) => {
                         const newDates = [...reportData.timelineDates];
                         const dateIndex = reportData.timelineDates.findIndex(
                           d => d.date.getTime() === weekItem.date.getTime()
                         );
                         if (dateIndex >= 0) {
-                          newDates[dateIndex] = {
-                            ...newDates[dateIndex],
-                            label: e.target.value
-                          };
-                          onDataChange({
-                            timelineDates: newDates
-                          });
+                          newDates[dateIndex] = { ...newDates[dateIndex], label: value };
+                          onDataChange({ timelineDates: newDates });
                         }
                       }}
                     />
-                  </Box>
+                  </div>
                 ))}
-              </Box>
+              </div>
             );
           })}
-          
-          {/* Fallback display for non-sprint based timeline (old method) */}
-          {(!reportData.projectSprints || reportData.projectSprints.length === 0) && 
+
+          {(!reportData.projectSprints || reportData.projectSprints.length === 0) &&
             reportData.timelineDates.map((weekItem, index) => (
-              <Box key={index} sx={{
+              <div key={index} style={{
                 display: 'flex',
-                mb: 1,
+                marginBottom: '8px',
                 alignItems: 'center',
-                bgcolor: weekItem.isSprintStart ? '#f0f7ff' : 'transparent',
-                p: weekItem.isSprintStart ? 1 : 0,
+                gap: '8px',
+                backgroundColor: weekItem.isSprintStart ? '#f0f7ff' : 'transparent',
+                padding: weekItem.isSprintStart ? '8px' : '0',
                 borderLeft: weekItem.isSprintStart ? '3px solid #3498db' : 'none',
               }}>
                 {weekItem.isSprintStart && (
-                  <Box sx={{ mr: 2, color: '#3498db', fontWeight: 'bold' }}>
+                  <strong style={{ marginRight: '8px', color: '#3498db' }}>
                     Sprint {weekItem.sprintNumber} →
-                  </Box>
+                  </strong>
                 )}
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label={`Week ${index + 1} ${weekItem.isSprintStart ? '(Sprint Start)' : ''}`}
-                    value={dayjs(weekItem.date)}
-                    readOnly
-                    slotProps={{ textField: { fullWidth: true, size: "small" } }}
-                  />
-                </LocalizationProvider>
-                <TextField
+                <DatePicker
+                  value={formatDate(weekItem.date)}
+                  isDisabled
+                  aria-label={`Week ${index + 1} ${weekItem.isSprintStart ? '(Sprint Start)' : ''}`}
+                />
+                <TextInput
                   value={weekItem.label}
-                  label="Label"
-                  size="small"
-                  sx={{ width: '120px', ml: 1 }}
-                  onChange={(e) => {
+                  type="text"
+                  aria-label="Label"
+                  style={{ width: '120px' }}
+                  onChange={(_event, value) => {
                     const newDates = [...reportData.timelineDates];
-                    newDates[index] = {
-                      ...newDates[index],
-                      label: e.target.value
-                    };
-                    onDataChange({
-                      timelineDates: newDates
-                    });
+                    newDates[index] = { ...newDates[index], label: value };
+                    onDataChange({ timelineDates: newDates });
                   }}
                 />
-              </Box>
+              </div>
             ))
           }
-        </Grid>
+        </GridItem>
 
-        <Grid item xs={12}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={onPrevStep}
-            >
+        <GridItem span={12}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+            <Button variant="secondary" onClick={onPrevStep}>
               Back to Basic Info
             </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={onNextStep}
-            >
-              Next: Sections & Content
+            <Button variant="primary" onClick={onNextStep}>
+              Next: Sections &amp; Content
             </Button>
-          </Box>
-        </Grid>
+          </div>
+        </GridItem>
       </Grid>
-    </Box>
+    </div>
   );
 };
 

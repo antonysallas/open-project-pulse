@@ -145,7 +145,7 @@ fi
 
 # --- Find available port ---
 
-DEFAULT_PORT=3010
+DEFAULT_PORT=3011
 PORT=$DEFAULT_PORT
 
 is_port_taken() {

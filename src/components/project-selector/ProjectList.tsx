@@ -1,5 +1,5 @@
 import React from 'react';
-import { FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
+import { FormGroup, FormSelect, FormSelectOption } from '@patternfly/react-core';
 import { ProjectInfo } from '../../types/ReportTypes';
 
 interface ProjectListProps {
@@ -8,35 +8,29 @@ interface ProjectListProps {
   onProjectChange: (projectId: string) => void;
 }
 
-/**
- * Component for displaying a list of selectable projects
- */
-const ProjectList: React.FC<ProjectListProps> = ({ 
-  projects, 
-  selectedProjectId, 
-  onProjectChange 
+const ProjectList: React.FC<ProjectListProps> = ({
+  projects,
+  selectedProjectId,
+  onProjectChange
 }) => {
-  const handleChange = (event: SelectChangeEvent<string>) => {
-    onProjectChange(event.target.value);
+  const handleChange = (_event: React.FormEvent<HTMLSelectElement>, value: string) => {
+    onProjectChange(value);
   };
 
   return (
-    <FormControl fullWidth>
-      <InputLabel id="project-select-label">Project</InputLabel>
-      <Select
-        labelId="project-select-label"
+    <FormGroup label="Project" fieldId="project-select">
+      <FormSelect
         id="project-select"
         value={selectedProjectId}
-        label="Project"
         onChange={handleChange}
+        aria-label="Select a project"
       >
+        <FormSelectOption key="" value="" label="Select a project..." isPlaceholder />
         {projects.map((project) => (
-          <MenuItem key={project.id} value={project.id}>
-            {project.name}
-          </MenuItem>
+          <FormSelectOption key={project.id} value={project.id} label={project.name} />
         ))}
-      </Select>
-    </FormControl>
+      </FormSelect>
+    </FormGroup>
   );
 };
 

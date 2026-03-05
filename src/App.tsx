@@ -1,15 +1,16 @@
-import Alert from "@mui/material/Alert";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Container from "@mui/material/Container";
-import CssBaseline from "@mui/material/CssBaseline";
-import Paper from "@mui/material/Paper";
-import Snackbar from "@mui/material/Snackbar";
-import Step from "@mui/material/Step";
-import StepLabel from "@mui/material/StepLabel";
-import Stepper from "@mui/material/Stepper";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
-import Typography from "@mui/material/Typography";
+import {
+  Alert,
+  AlertGroup,
+  AlertActionCloseButton,
+  Button,
+  Card,
+  CardBody,
+  Page,
+  PageSection,
+  ProgressStepper,
+  ProgressStep,
+  Title,
+} from "@patternfly/react-core";
 import html2pdf from "html2pdf.js";
 import React, { useCallback, useEffect, useState } from "react";
 import ProjectSelector from "./components/ProjectSelector";
@@ -19,100 +20,9 @@ import { ProjectInfo, ReportData, SerializedTimelineWeek, WeeklyReport, Timeline
 import { getWeeklyReports, saveWeeklyReport, saveReportPdf } from "./utils/projectService";
 import { getCurrentSprintNumber } from "./utils/projectUtils";
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#0f3b64",
-    },
-    secondary: {
-      main: "#e74c3c",
-    },
-    background: {
-      default: "#f5f7fa",
-    },
-  },
-  typography: {
-    fontFamily: "var(--font-family)",
-    h1: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 700,
-    },
-    h2: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 700,
-    },
-    h3: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 700,
-    },
-    h4: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 700,
-    },
-    h5: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 700,
-    },
-    h6: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 700,
-    },
-    subtitle1: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 500,
-    },
-    subtitle2: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 500,
-    },
-    body1: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 400,
-    },
-    body2: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 400,
-    },
-    button: {
-      fontFamily: "var(--font-family)",
-      fontWeight: 500,
-      textTransform: "none",
-    },
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          fontFamily: "var(--font-family)",
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          "& .MuiInputBase-root": {
-            fontFamily: "var(--font-family)",
-          },
-          "& .MuiInputLabel-root": {
-            fontFamily: "var(--font-family)",
-          },
-        },
-      },
-    },
-    MuiTypography: {
-      styleOverrides: {
-        root: {
-          fontFamily: "var(--font-family)",
-        },
-      },
-    },
-  },
-});
-
 const steps = ["Select Project", "Fill Report Details", "Preview & Generate"];
 const formSubStepTitles = ["Basic Info", "Sections & Content", "Review & Preview"];
 
-// Helper functions for date calculations
 const calculateDaysRemaining = (endDate: string, currentDate: Date = new Date()): number => {
   const end = new Date(endDate);
   const diffTime = end.getTime() - currentDate.getTime();
@@ -126,12 +36,11 @@ const calculateCompletionPercentage = (startDate: string, endDate: string, curre
   const elapsedTime = currentDate.getTime() - start.getTime();
 
   let percentage = (elapsedTime / totalTime) * 100;
-  percentage = Math.min(Math.max(percentage, 0), 100); // Ensure between 0-100
+  percentage = Math.min(Math.max(percentage, 0), 100);
   return Number(percentage.toFixed(1));
 };
 
 const findCurrentTimelinePosition = (dates: TimelineWeek[], currentDate: Date = new Date()): number => {
-  // Find the closest date that's not in the future
   let closestPastIndex = 0;
   const currentTime = currentDate.getTime();
 
@@ -153,36 +62,26 @@ function App() {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error" | "info">("success");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "danger" | "info">("success");
 
-  // Scroll to top when navigating between steps or substeps
   useEffect(() => {
-    // Small timeout to ensure DOM updates first
     setTimeout(() => {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 100);
   }, [activeStep, formSubStep]);
 
   useEffect(() => {
-    // If a project is selected, initialize the report data
     if (selectedProject) {
       const today = new Date();
       const nextReportDate = new Date(today);
-      nextReportDate.setDate(today.getDate() + 7); // Next report in 1 week
+      nextReportDate.setDate(today.getDate() + 7);
 
-      // Use a local variable to detect component unmount
       let isMounted = true;
 
-      // Load previous reports for this project
       getWeeklyReports(selectedProject.id)
         .then((reports) => {
-          // Only set state if component is still mounted
           if (!isMounted) return;
 
-          // If we have previous reports, use the latest one as a basis
           if (reports.length > 0) {
             const latestReport = reports[reports.length - 1];
 
@@ -193,43 +92,23 @@ function App() {
               reportDate: today,
               nextReportDate: nextReportDate,
               currentSprint: latestReport.currentSprint,
-              sprintDuration: selectedProject.sprintDuration || 1, // Fallback to 1 week if not specified
-              sprintStart: 1, // Default to starting at Sprint 1
+              sprintDuration: selectedProject.sprintDuration || 1,
+              sprintStart: 1,
               status: latestReport.status,
               timelineDates: Array.isArray(latestReport.timelineDates)
                 ? latestReport.timelineDates.map((item: any) => {
                     if (typeof item === "string") {
-                      // Convert old string format to new TimelineWeek format
                       const date = new Date();
                       const [day, month] = item.split("-");
                       const monthMap: { [key: string]: number } = {
-                        Jan: 0,
-                        Feb: 1,
-                        Mar: 2,
-                        Apr: 3,
-                        May: 4,
-                        Jun: 5,
-                        Jul: 6,
-                        Aug: 7,
-                        Sep: 8,
-                        Oct: 9,
-                        Nov: 10,
-                        Dec: 11,
+                        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
                       };
                       date.setMonth(monthMap[month]);
                       date.setDate(parseInt(day));
-                      return {
-                        date,
-                        label: item,
-                        sprintNumber: 1,
-                        isSprintStart: false,
-                      };
+                      return { date, label: item, sprintNumber: 1, isSprintStart: false };
                     } else if (item.date && typeof item.date === "string") {
-                      // Convert serialized date string back to Date object
-                      return {
-                        ...item,
-                        date: new Date(item.date),
-                      };
+                      return { ...item, date: new Date(item.date) };
                     }
                     return item;
                   })
@@ -255,31 +134,27 @@ function App() {
                   })
                 : [],
               teamName: selectedProject.teamName || "Project Team",
-              projectGoals: selectedProject.projectGoals || [], // Include project goals/outcomes from project info
-              projectSprints: selectedProject.sprints || [], // Include predefined sprints if available
+              projectGoals: selectedProject.projectGoals || [],
+              projectSprints: selectedProject.sprints || [],
               completionPercentage: calculateCompletionPercentage(
-                selectedProject.startDate,
-                selectedProject.endDate,
-                today
+                selectedProject.startDate, selectedProject.endDate, today
               ),
               daysRemaining: calculateDaysRemaining(selectedProject.endDate, today),
               currentTimelinePosition: 0,
             });
           } else {
-            // Initialize with default data
             const projectSprints = selectedProject.sprints || [];
-            // Automatically determine current sprint based on today's date
             const currentSprint = getCurrentSprintNumber(projectSprints, today);
-            
+
             setReportData({
               projectTitle: selectedProject.name,
               projectStartDate: new Date(selectedProject.startDate),
               projectEndDate: new Date(selectedProject.endDate),
               reportDate: today,
               nextReportDate: nextReportDate,
-              currentSprint: currentSprint, // Automatically determined based on current date
-              sprintDuration: selectedProject.sprintDuration || 1, // Fallback to 1 week if not specified
-              sprintStart: 1, // Default to starting at Sprint 1
+              currentSprint: currentSprint,
+              sprintDuration: selectedProject.sprintDuration || 1,
+              sprintStart: 1,
               status: "on-track",
               timelineDates: [],
               accomplishments: [],
@@ -287,12 +162,10 @@ function App() {
               peopleAndProcess: [],
               technology: [],
               teamName: selectedProject.teamName || "Project Team",
-              projectGoals: selectedProject.projectGoals || [], // Include project goals/outcomes from project info
-              projectSprints: projectSprints, // Include predefined sprints if available
+              projectGoals: selectedProject.projectGoals || [],
+              projectSprints: projectSprints,
               completionPercentage: calculateCompletionPercentage(
-                selectedProject.startDate,
-                selectedProject.endDate,
-                today
+                selectedProject.startDate, selectedProject.endDate, today
               ),
               daysRemaining: calculateDaysRemaining(selectedProject.endDate, today),
               currentTimelinePosition: 0,
@@ -301,16 +174,14 @@ function App() {
         })
         .catch((error) => {
           console.error("Error loading weekly reports:", error);
-          // Handle error but don't cause a render loop
         });
 
-      // Cleanup function to prevent state updates on unmounted component
       return () => {
         isMounted = false;
       };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProject?.id]); // Only depend on the selectedProject.id, not the entire object
+  }, [selectedProject?.id]);
 
   const handleSelectProject = useCallback((project: ProjectInfo) => {
     setSelectedProject(project);
@@ -318,33 +189,25 @@ function App() {
 
   const handleNext = () => {
     if (activeStep === 0) {
-      // Moving from project selection to form
       setActiveStep(1);
     } else if (activeStep === 1) {
-      // Moving from form to next step
       if (formSubStep < 2) {
-        // Move to the next form substep
         setFormSubStep(formSubStep + 1);
       }
     }
   };
 
   const handleBack = () => {
-    // Handle going back
     if (activeStep === 2) {
-      // When going back from preview to the form content step
-      setActiveStep(1); // Go back to step 2
-      setFormSubStep(1); // Go to the Content form (second form step)
+      setActiveStep(1);
+      setFormSubStep(1);
     } else if (activeStep === 1) {
       if (formSubStep > 0) {
-        // If we're on Content form, go back to Basic Info
         setFormSubStep(formSubStep - 1);
       } else {
-        // If we're on the Basic Info form, go back to project selection
         setActiveStep(0);
       }
     } else {
-      // Default case, move back one step
       setActiveStep((prevActiveStep) => Math.max(0, prevActiveStep - 1));
     }
   };
@@ -359,30 +222,17 @@ function App() {
     setReportData((prevData) => {
       if (!prevData) return null;
 
-      const updatedData = {
-        ...prevData,
-        ...newData,
-      };
-
-      // Recalculate dynamic values if related fields have changed
+      const updatedData = { ...prevData, ...newData };
       const recalculateNeeded = newData.reportDate !== undefined;
 
       if (recalculateNeeded && selectedProject) {
-        // Recalculate completion percentage
         updatedData.completionPercentage = calculateCompletionPercentage(
-          selectedProject.startDate,
-          selectedProject.endDate,
-          updatedData.reportDate
+          selectedProject.startDate, selectedProject.endDate, updatedData.reportDate
         );
-
-        // Recalculate days remaining
         updatedData.daysRemaining = calculateDaysRemaining(selectedProject.endDate, updatedData.reportDate);
-
-        // Recalculate current timeline position
         if (updatedData.timelineDates && updatedData.timelineDates.length > 0) {
           updatedData.currentTimelinePosition = findCurrentTimelinePosition(
-            updatedData.timelineDates,
-            updatedData.reportDate
+            updatedData.timelineDates, updatedData.reportDate
           );
         }
       }
@@ -417,10 +267,8 @@ function App() {
     };
 
     try {
-      // Save JSON report
       await saveWeeklyReport(selectedProject.id, weeklyReport);
 
-      // Generate and save PDF
       const element = document.getElementById("report-preview");
       if (!element) return;
 
@@ -487,14 +335,14 @@ function App() {
             element.style.position = originalPosition;
 
             setSnackbarMessage("Error generating PDF. Please try again.");
-            setSnackbarSeverity("error");
+            setSnackbarSeverity("danger");
             setSnackbarOpen(true);
           });
       }, 500);
     } catch (error) {
       console.error("Failed to save report:", error);
       setSnackbarMessage("Failed to save report. Please try again.");
-      setSnackbarSeverity("error");
+      setSnackbarSeverity("danger");
       setSnackbarOpen(true);
     }
   };
@@ -503,115 +351,98 @@ function App() {
     setSnackbarOpen(false);
   };
 
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Container maxWidth="lg" sx={{ my: 4 }}>
-        <Paper
-          elevation={3}
-          sx={{
-            p: 3,
-            borderRadius: 2,
-            background: "linear-gradient(to right, #f9f9f9, #ffffff)",
-          }}
-        >
-          <Typography variant="h4" component="h1" align="center" gutterBottom color="primary">
-            Project Management Report Generator
-          </Typography>
+  const getStepVariant = (index: number): "success" | "info" | "pending" | "default" => {
+    if (index < activeStep) return "success";
+    if (index === activeStep) return "info";
+    return "pending";
+  };
 
-          <Stepper activeStep={activeStep} sx={{ mb: 4, py: 3 }}>
-            {steps.map((label, index) => (
-              <Step key={label}>
-                <StepLabel 
-                  sx={{ 
-                    '& .MuiStepLabel-label': {
-                      // Apply primary color to all steps, but ensure the "Preview & Generate" label always shows in primary color
-                      color: index === 2 || activeStep === index ? 'primary.main' : '',
-                      fontWeight: index === activeStep ? 'bold' : 'normal'
-                    },
-                    // Override the disabled color specifically
-                    '& .MuiStepLabel-label.Mui-disabled': {
-                      color: index === 2 ? 'primary.main' : ''
-                    }
-                  }}
+  return (
+    <Page>
+      <PageSection style={{ maxWidth: '1200px', margin: '32px auto', width: '100%', backgroundColor: '#fff' }}>
+        <Card style={{ background: 'linear-gradient(to right, #f9f9f9, #ffffff)' }}>
+          <CardBody>
+            <Title headingLevel="h1" size="xl" style={{ textAlign: 'center', marginBottom: '24px', color: 'var(--primary-blue)' }}>
+              Project Management Report Generator
+            </Title>
+
+            <ProgressStepper style={{ marginBottom: '32px', paddingTop: '16px', paddingBottom: '16px' }}>
+              {steps.map((label, index) => (
+                <ProgressStep
+                  key={label}
+                  id={`step-${index}`}
+                  titleId={`step-${index}-title`}
+                  variant={getStepVariant(index)}
+                  isCurrent={index === activeStep}
+                  aria-label={label}
                 >
                   {label}
-                </StepLabel>
-              </Step>
-            ))}
-          </Stepper>
+                </ProgressStep>
+              ))}
+            </ProgressStepper>
 
-          {activeStep === 0 && <ProjectSelector onSelectProject={handleSelectProject} />}
+            {activeStep === 0 && <ProjectSelector onSelectProject={handleSelectProject} />}
 
-          {/* The preview step is now handled in the form's Review & Preview substep */}
-
-          {activeStep === 1 && reportData && (
-            <Box>
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="h5" color="primary" gutterBottom>
-                  {formSubStepTitles[formSubStep]}
-                </Typography>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  Step {formSubStep + 1} of 3
-                </Typography>
-              </Box>
-              <ReportForm
-                currentStep={formSubStep}
-                reportData={reportData}
-                onDataChange={handleFormChange}
-                onSubStepChange={handleSubStepChange}
-                selectedProject={selectedProject!}
-              />
-            </Box>
-          )}
-
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: activeStep === 0 ? "flex-end" : "space-between",
-              mt: 3,
-            }}
-          >
-            {/* Project selection screen - Start button */}
-            {activeStep === 0 && (
-              <Button 
-                variant="contained" 
-                onClick={handleNext} 
-                disabled={!selectedProject}
-              >
-                Start Report Form
-              </Button>
+            {activeStep === 1 && reportData && (
+              <div>
+                <div style={{ marginBottom: '24px' }}>
+                  <Title headingLevel="h2" style={{ color: 'var(--primary-blue)' }}>
+                    {formSubStepTitles[formSubStep]}
+                  </Title>
+                  <small style={{ color: '#6a6e73' }}>
+                    Step {formSubStep + 1} of 3
+                  </small>
+                </div>
+                <ReportForm
+                  currentStep={formSubStep}
+                  reportData={reportData}
+                  onDataChange={handleFormChange}
+                  onSubStepChange={handleSubStepChange}
+                  selectedProject={selectedProject!}
+                />
+              </div>
             )}
-            
-            {/* Navigation buttons for final form step */}
-            {activeStep === 1 && formSubStep === 2 && (
-              <>
-                <Button 
-                  variant="outlined" 
-                  color="primary" 
-                  onClick={handleBack}
-                >
-                  Back to Sections & Content
-                </Button>
-                <Button 
-                  variant="contained" 
-                  color="secondary" 
-                  onClick={handleGenerateReport}
-                >
-                  Generate & Save Report
-                </Button>
-              </>
-            )}
-          </Box>
-        </Paper>
-      </Container>
 
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleCloseSnackbar}>
-        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: "100%" }}>
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
-    </ThemeProvider>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: activeStep === 0 ? "flex-end" : "space-between",
+                marginTop: "24px",
+              }}
+            >
+              {activeStep === 0 && (
+                <Button variant="primary" onClick={handleNext} isDisabled={!selectedProject}>
+                  Start Report Form
+                </Button>
+              )}
+
+              {activeStep === 1 && formSubStep === 2 && (
+                <>
+                  <Button variant="secondary" onClick={handleBack}>
+                    Back to Sections &amp; Content
+                  </Button>
+                  <Button variant="danger" onClick={handleGenerateReport}>
+                    Generate &amp; Save Report
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+      </PageSection>
+
+      {snackbarOpen && (
+        <AlertGroup isToast isLiveRegion>
+          <Alert
+            variant={snackbarSeverity}
+            title={snackbarMessage}
+            actionClose={<AlertActionCloseButton onClose={handleCloseSnackbar} />}
+            timeout={6000}
+            onTimeout={handleCloseSnackbar}
+          />
+        </AlertGroup>
+      )}
+    </Page>
   );
 }
 

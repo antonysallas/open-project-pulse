@@ -1,7 +1,6 @@
 import React from 'react';
-import { Box } from '@mui/material';
 import { ReportData, ProjectInfo } from '../types/ReportTypes';
-import { 
+import {
   BasicInfoForm,
   ContentForm,
   ReviewForm
@@ -15,18 +14,13 @@ interface ReportFormProps {
   selectedProject: ProjectInfo;
 }
 
-/**
- * Main ReportForm component that manages the wizard-like flow between different
- * sections of the report form. Each section is now a separate component.
- */
-const ReportForm: React.FC<ReportFormProps> = ({ 
-  currentStep, 
-  reportData, 
-  onDataChange, 
+const ReportForm: React.FC<ReportFormProps> = ({
+  currentStep,
+  reportData,
+  onDataChange,
   onSubStepChange,
   selectedProject
 }) => {
-  // Navigation handlers
   const handleNextStep = () => {
     onSubStepChange && onSubStepChange(currentStep + 1);
   };
@@ -36,36 +30,33 @@ const ReportForm: React.FC<ReportFormProps> = ({
   };
 
   return (
-    <Box sx={{ mt: 2 }}>
-      {/* Step 1: Basic Info */}
+    <div style={{ marginTop: '16px' }}>
       {currentStep === 0 && (
-        <BasicInfoForm 
-          reportData={reportData} 
-          onDataChange={onDataChange} 
+        <BasicInfoForm
+          reportData={reportData}
+          onDataChange={onDataChange}
           onNextStep={handleNextStep}
           selectedProject={selectedProject}
         />
       )}
 
-      {/* Step 2: Sections & Content */}
       {currentStep === 1 && (
-        <ContentForm 
-          reportData={reportData} 
-          onDataChange={onDataChange} 
-          onPrevStep={handlePrevStep} 
-          onNextStep={handleNextStep} 
+        <ContentForm
+          reportData={reportData}
+          onDataChange={onDataChange}
+          onPrevStep={handlePrevStep}
+          onNextStep={handleNextStep}
         />
       )}
 
-      {/* Step 3: Review & Preview */}
       {currentStep === 2 && (
-        <ReviewForm 
-          reportData={reportData} 
-          onDataChange={onDataChange} 
-          onPrevStep={handlePrevStep} 
+        <ReviewForm
+          reportData={reportData}
+          onDataChange={onDataChange}
+          onPrevStep={handlePrevStep}
         />
       )}
-    </Box>
+    </div>
   );
 };
 

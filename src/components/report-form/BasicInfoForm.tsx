@@ -1,8 +1,17 @@
 import React, { useEffect } from 'react';
-import { Box, TextField, Typography, Grid, Button, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import {
+  Button,
+  DatePicker,
+  Form,
+  FormGroup,
+  FormSelect,
+  FormSelectOption,
+  Grid,
+  GridItem,
+  TextArea,
+  TextInput,
+  Title,
+} from '@patternfly/react-core';
 import dayjs from 'dayjs';
 import { ReportData, ProjectInfo } from '../../types/ReportTypes';
 import { generateTimelineDatesFromSprints, findCurrentTimelinePosition, generatePreEngagementWithSprintsTimeline } from './DateUtils';
@@ -14,66 +23,68 @@ interface BasicInfoFormProps {
   selectedProject: ProjectInfo;
 }
 
-const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ reportData, onDataChange, onNextStep, selectedProject }) => {
-  const handleDateChange = (field: 'reportDate' | 'nextReportDate' | 'projectStartDate' | 'projectEndDate') => (date: dayjs.Dayjs | null) => {
-    if (date) {
-      if (field === 'reportDate') {
-        // When report date changes, automatically set next report date to 1 week ahead
-        const nextDate = date.add(1, 'week');
-        const newReportDate = date.toDate();
-        
-        // Also update the current sprint based on the new report date
-        let currentSprint = reportData.currentSprint;
-        if (reportData.projectSprints && reportData.projectSprints.length > 0) {
-          // Find the sprint that contains this date
-          const matchingSprint = reportData.projectSprints.find(sprint => {
-            const sprintStart = new Date(sprint.startDate);
-            const sprintEnd = new Date(sprint.endDate);
-            // Adjust the end date to include the entire day
-            sprintEnd.setHours(23, 59, 59, 999);
-            return newReportDate >= sprintStart && newReportDate <= sprintEnd;
-          });
-          
-          if (matchingSprint) {
-            currentSprint = matchingSprint.number;
-          }
-        }
-        
-        onDataChange({
-          reportDate: newReportDate,
-          nextReportDate: nextDate.toDate(),
-          currentSprint: currentSprint
-        });
-      } else {
-        onDataChange({ [field]: date.toDate() });
-      }
-    }
-  };
+const formatDate = (date: Date): string => {
+  const d = date.getDate().toString().padStart(2, '0');
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const y = date.getFullYear();
+  return `${y}-${m}-${d}`;
+};
 
-  // Scroll to top when component mounts
+const parseDate = (val: string): Date => {
+  if (val.split('-').length === 3) {
+    return new Date(`${val}T00:00:00`);
+  }
+  return new Date(NaN);
+};
+
+const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ reportData, onDataChange, onNextStep, selectedProject }) => {
+  const handleDateChange = (field: 'reportDate' | 'nextReportDate' | 'projectStartDate' | 'projectEndDate') =>
+    (_event: React.FormEvent<HTMLInputElement>, _value: string, dateValue?: Date) => {
+      if (dateValue) {
+        if (field === 'reportDate') {
+          const nextDate = new Date(dateValue);
+          nextDate.setDate(nextDate.getDate() + 7);
+
+          let currentSprint = reportData.currentSprint;
+          if (reportData.projectSprints && reportData.projectSprints.length > 0) {
+            const matchingSprint = reportData.projectSprints.find(sprint => {
+              const sprintStart = new Date(sprint.startDate);
+              const sprintEnd = new Date(sprint.endDate);
+              sprintEnd.setHours(23, 59, 59, 999);
+              return dateValue >= sprintStart && dateValue <= sprintEnd;
+            });
+            if (matchingSprint) {
+              currentSprint = matchingSprint.number;
+            }
+          }
+
+          onDataChange({
+            reportDate: dateValue,
+            nextReportDate: nextDate,
+            currentSprint: currentSprint
+          });
+        } else {
+          onDataChange({ [field]: dateValue });
+        }
+      }
+    };
+
   useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Auto-generate timeline when component mounts or when sprints/phase change
   useEffect(() => {
     if (reportData.projectSprints && reportData.projectSprints.length > 0) {
-      // Generate timeline based on project phase
       let newDates;
       if (reportData.projectPhase === 'pre-engagement') {
-        // Generate timeline with pre-engagement block followed by sprints
         newDates = generatePreEngagementWithSprintsTimeline(
           reportData.projectSprints,
           selectedProject.preEngagementStartDate
         );
       } else {
-        // Generate regular sprint timeline
         newDates = generateTimelineDatesFromSprints(reportData.projectSprints);
       }
-      
+
       onDataChange({
         timelineDates: newDates,
         currentTimelinePosition: findCurrentTimelinePosition(newDates, reportData.reportDate)
@@ -82,234 +93,191 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ reportData, onDataChange,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportData.projectSprints, reportData.reportDate, reportData.projectPhase, selectedProject.preEngagementStartDate]);
 
+  const statusColor = reportData.status === 'on-track' ? '#4caf50' :
+    reportData.status === 'at-risk' ? '#ff9800' : '#f44336';
+
   return (
-    <Box>
-      <Typography variant="h6" gutterBottom sx={{ mb: 3, color: 'var(--primary-blue)' }}>
+    <Form>
+      <Title headingLevel="h3" style={{ marginBottom: '16px', color: 'var(--primary-blue)' }}>
         Basic Project Information
-      </Typography>
-      
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <TextField
-            id="projectTitle"
-            name="projectTitle"
-            label="Project Title"
-            fullWidth
-            value={reportData.projectTitle}
-            InputProps={{
-              readOnly: true,
-              sx: {
-                bgcolor: 'var(--white)',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'var(--border-color)'
-                }
-              }
-            }}
-          />
-        </Grid>
+      </Title>
 
-        <Grid item xs={12}>
-          <TextField
-            id="projectGoals"
-            name="projectGoals"
-            label="Project Goals"
-            fullWidth
-            multiline
-            rows={8}
-            value={reportData.projectGoals.map((goal, index) => `${index + 1}. ${goal}`).join('\n')}
-            InputProps={{
-              readOnly: true,
-              sx: {
-                bgcolor: 'var(--white)',
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'var(--border-color)'
-                },
-                '& .MuiInputBase-multiline': {
-                  padding: '12px',
-                  lineHeight: '1.5'
-                }
-              }
-            }}
-          />
-        </Grid>
+      <Grid hasGutter>
+        <GridItem span={12}>
+          <FormGroup label="Project Title" fieldId="projectTitle">
+            <TextInput
+              id="projectTitle"
+              value={reportData.projectTitle}
+              isDisabled
+              type="text"
+            />
+          </FormGroup>
+        </GridItem>
 
-        <Grid item xs={12} sm={6}>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <GridItem span={12}>
+          <FormGroup label="Project Goals" fieldId="projectGoals">
+            <TextArea
+              id="projectGoals"
+              value={reportData.projectGoals.map((goal, index) => `${index + 1}. ${goal}`).join('\n')}
+              isDisabled
+              rows={8}
+              resizeOrientation="vertical"
+            />
+          </FormGroup>
+        </GridItem>
+
+        <GridItem span={12} sm={6}>
+          <FormGroup label="Project Start Date" fieldId="projectStartDate">
             <DatePicker
-              label="Project Start Date"
-              value={dayjs(reportData.projectStartDate)}
+              value={formatDate(reportData.projectStartDate)}
               onChange={handleDateChange('projectStartDate')}
-              format="DD/MM/YYYY"
-              slotProps={{ textField: { fullWidth: true } }}
+              dateFormat={(date) => formatDate(date)}
+              dateParse={parseDate}
             />
-          </LocalizationProvider>
-        </Grid>
+          </FormGroup>
+        </GridItem>
 
-        <Grid item xs={12} sm={6}>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <GridItem span={12} sm={6}>
+          <FormGroup label="Project End Date" fieldId="projectEndDate">
             <DatePicker
-              label="Project End Date"
-              value={dayjs(reportData.projectEndDate)}
+              value={formatDate(reportData.projectEndDate)}
               onChange={handleDateChange('projectEndDate')}
-              format="DD/MM/YYYY"
-              slotProps={{ textField: { fullWidth: true } }}
+              dateFormat={(date) => formatDate(date)}
+              dateParse={parseDate}
             />
-          </LocalizationProvider>
-        </Grid>
+          </FormGroup>
+        </GridItem>
 
-        <Grid item xs={12} sm={6}>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <GridItem span={12} sm={6}>
+          <FormGroup label="Current Report Date" fieldId="reportDate">
             <DatePicker
-              label="Current Report Date"
-              value={dayjs(reportData.reportDate)}
+              value={formatDate(reportData.reportDate)}
               onChange={handleDateChange('reportDate')}
-              format="DD/MM/YYYY"
-              slotProps={{ textField: { fullWidth: true } }}
+              dateFormat={(date) => formatDate(date)}
+              dateParse={parseDate}
             />
-          </LocalizationProvider>
-        </Grid>
+          </FormGroup>
+        </GridItem>
 
-        <Grid item xs={12} sm={6}>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <GridItem span={12} sm={6}>
+          <FormGroup label="Next Report Date" fieldId="nextReportDate">
             <DatePicker
-              label="Next Report Date"
-              value={dayjs(reportData.nextReportDate)}
+              value={formatDate(reportData.nextReportDate)}
               onChange={handleDateChange('nextReportDate')}
-              format="DD/MM/YYYY"
-              slotProps={{ textField: { fullWidth: true } }}
+              dateFormat={(date) => formatDate(date)}
+              dateParse={parseDate}
             />
-          </LocalizationProvider>
-        </Grid>
+          </FormGroup>
+        </GridItem>
 
-        <Grid item xs={12}>
-          <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 2, color: 'var(--primary-blue)' }}>
+        <GridItem span={12}>
+          <Title headingLevel="h3" style={{ marginTop: '16px', marginBottom: '16px', color: 'var(--primary-blue)' }}>
             Status Information
-          </Typography>
-        </Grid>
+          </Title>
+        </GridItem>
 
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth>
-            <InputLabel id="project-phase-label">Project Phase</InputLabel>
-            <Select
-              labelId="project-phase-label"
+        <GridItem span={12} sm={6}>
+          <FormGroup label="Project Phase" fieldId="project-phase">
+            <FormSelect
+              id="project-phase"
               value={reportData.projectPhase || 'active'}
-              label="Project Phase"
-              onChange={(e: SelectChangeEvent) => {
-                const phase = e.target.value as 'pre-engagement' | 'active';
-                onDataChange({ 
+              onChange={(_event, value) => {
+                const phase = value as 'pre-engagement' | 'active';
+                onDataChange({
                   projectPhase: phase,
                   currentSprint: phase === 'pre-engagement' ? -1 : 0
                 });
               }}
+              aria-label="Project Phase"
             >
-              <MenuItem value="pre-engagement">Pre-Engagement (Before Sprint 0)</MenuItem>
-              <MenuItem value="active">Active Engagement (Sprint Started)</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
+              <FormSelectOption value="pre-engagement" label="Pre-Engagement (Before Sprint 0)" />
+              <FormSelectOption value="active" label="Active Engagement (Sprint Started)" />
+            </FormSelect>
+          </FormGroup>
+        </GridItem>
 
-        <Grid item xs={12} sm={6}>
+        <GridItem span={12} sm={6}>
           {reportData.projectPhase === 'pre-engagement' ? (
-            <Box>
-              <TextField
-                label="Pre-Engagement Period"
-                fullWidth
+            <FormGroup
+              label="Pre-Engagement Period"
+              fieldId="pre-engagement-period"
+            >
+              <TextInput
+                id="pre-engagement-period"
                 value={
                   selectedProject.preEngagementStartDate && reportData.projectSprints && reportData.projectSprints.length > 0
                     ? `${dayjs(selectedProject.preEngagementStartDate).format('MMM D')} - ${dayjs(reportData.projectSprints[0].startDate).format('MMM D, YYYY')}`
-                    : reportData.projectSprints && reportData.projectSprints.length > 0 
+                    : reportData.projectSprints && reportData.projectSprints.length > 0
                     ? `Today - ${dayjs(reportData.projectSprints[0].startDate).format('MMM D, YYYY')}`
                     : 'Not defined'
                 }
-                InputProps={{
-                  readOnly: true,
-                  sx: {
-                    bgcolor: 'var(--white)',
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'var(--border-color)'
-                    }
-                  }
-                }}
-                helperText="Currently in Pre-Engagement Phase (Sprint 0 starts after this period)"
+                isDisabled
+                type="text"
               />
-            </Box>
+              <small style={{ color: '#6a6e73', marginTop: '4px', display: 'block' }}>
+                Currently in Pre-Engagement Phase (Sprint 0 starts after this period)
+              </small>
+            </FormGroup>
           ) : (
-            <FormControl fullWidth>
-              <InputLabel id="current-sprint-label">Current Sprint</InputLabel>
-              <Select
-                labelId="current-sprint-label"
-                value={reportData.currentSprint}
-                label="Current Sprint"
-                onChange={(e: SelectChangeEvent<number>) => {
-                  onDataChange({ currentSprint: Number(e.target.value) });
+            <FormGroup label="Current Sprint" fieldId="current-sprint">
+              <FormSelect
+                id="current-sprint"
+                value={String(reportData.currentSprint)}
+                onChange={(_event, value) => {
+                  onDataChange({ currentSprint: Number(value) });
                 }}
+                aria-label="Current Sprint"
               >
-                {/* Use predefined sprints from project details */}
                 {reportData.projectSprints && reportData.projectSprints.length > 0 ? (
                   reportData.projectSprints.map((sprint) => (
-                    <MenuItem key={sprint.number} value={sprint.number}>
-                      {sprint.name}
-                    </MenuItem>
+                    <FormSelectOption key={sprint.number} value={String(sprint.number)} label={sprint.name} />
                   ))
                 ) : (
-                  // Fall back to the old method if no sprints are defined
                   Array.from({ length: 8 }).map((_, index) => (
-                    <MenuItem key={index + 1} value={index + 1}>Sprint {index + 1}</MenuItem>
+                    <FormSelectOption key={index + 1} value={String(index + 1)} label={`Sprint ${index + 1}`} />
                   ))
                 )}
-              </Select>
-            </FormControl>
+              </FormSelect>
+            </FormGroup>
           )}
-        </Grid>
+        </GridItem>
 
-        <Grid item xs={12}>
-          <FormControl fullWidth>
-            <InputLabel id="status-label">Project Status</InputLabel>
-            <Select
-              labelId="status-label"
+        <GridItem span={12}>
+          <FormGroup label="Project Status" fieldId="status">
+            <FormSelect
+              id="status"
               value={reportData.status}
-              label="Project Status"
-              onChange={(e) => {
-                onDataChange({
-                  status: e.target.value as 'on-track' | 'at-risk' | 'delayed'
-                });
+              onChange={(_event, value) => {
+                onDataChange({ status: value as 'on-track' | 'at-risk' | 'delayed' });
               }}
-              sx={{
-                '.MuiSelect-select': {
-                  color: reportData.status === 'on-track' ? '#4caf50' : 
-                         reportData.status === 'at-risk' ? '#ff9800' : 
-                         reportData.status === 'delayed' ? '#f44336' : 'inherit',
-                  fontWeight: 'bold'
-                }
-              }}
+              aria-label="Project Status"
+              style={{ color: statusColor, fontWeight: 'bold' }}
             >
-              <MenuItem value="on-track" sx={{ color: '#4caf50', fontWeight: 'bold' }}>On Track</MenuItem>
-              <MenuItem value="at-risk" sx={{ color: '#ff9800', fontWeight: 'bold' }}>At Risk</MenuItem>
-              <MenuItem value="delayed" sx={{ color: '#f44336', fontWeight: 'bold' }}>Delayed</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
+              <FormSelectOption value="on-track" label="On Track" />
+              <FormSelectOption value="at-risk" label="At Risk" />
+              <FormSelectOption value="delayed" label="Delayed" />
+            </FormSelect>
+          </FormGroup>
+        </GridItem>
 
-        <Grid item xs={12}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+        <GridItem span={12}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
             <Button
-              variant="outlined"
-              color="primary"
-              onClick={() => window.location.reload()} // Simple way to go back to project selection
+              variant="secondary"
+              onClick={() => window.location.reload()}
             >
               Back to Project Selection
             </Button>
             <Button
-              variant="contained"
-              color="primary"
+              variant="primary"
               onClick={onNextStep}
             >
-              Next: Sections & Content
+              Next: Sections &amp; Content
             </Button>
-          </Box>
-        </Grid>
+          </div>
+        </GridItem>
       </Grid>
-    </Box>
+    </Form>
   );
 };
 

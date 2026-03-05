@@ -1,17 +1,14 @@
 import React from 'react';
-import { Typography, Alert } from '@mui/material';
+import { Alert } from '@patternfly/react-core';
 
 interface ErrorStateProps {
   message: string;
 }
 
-/**
- * Component to display error messages
- */
 const ErrorState: React.FC<ErrorStateProps> = ({ message }) => {
   return (
-    <Alert severity="error">
-      <Typography>{message}</Typography>
+    <Alert variant="danger" title="Error" isInline>
+      {message}
     </Alert>
   );
 };
