@@ -1,0 +1,53 @@
+{
+  "id": "example-data-pipeline",
+  "name": "Data Pipeline Automation",
+  "description": "Automate data ingestion and processing pipelines",
+  "startDate": "2025-10-06",
+  "endDate": "2025-12-19",
+  "sprintDuration": 1,
+  "teamName": "Data Engineering Team",
+  "status": "completed",
+  "projectGoals": [
+    "Design and implement automated ETL pipelines for three core data sources",
+    "Establish monitoring and alerting for pipeline health and data quality",
+    "Reduce manual data processing time by 60%"
+  ],
+  "sprints": [
+    {
+      "number": 1,
+      "startDate": "2025-10-06",
+      "endDate": "2025-10-17",
+      "name": "Sprint 1"
+    },
+    {
+      "number": 2,
+      "startDate": "2025-10-20",
+      "endDate": "2025-10-31",
+      "name": "Sprint 2"
+    },
+    {
+      "number": 3,
+      "startDate": "2025-11-03",
+      "endDate": "2025-11-14",
+      "name": "Sprint 3"
+    },
+    {
+      "number": 4,
+      "startDate": "2025-11-17",
+      "endDate": "2025-11-28",
+      "name": "Sprint 4"
+    },
+    {
+      "number": 5,
+      "startDate": "2025-12-01",
+      "endDate": "2025-12-12",
+      "name": "Sprint 5"
+    },
+    {
+      "number": 6,
+      "startDate": "2025-12-15",
+      "endDate": "2025-12-19",
+      "name": "Sprint 6"
+    }
+  ]
+}

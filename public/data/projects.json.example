@@ -1,0 +1,18 @@
+{
+  "projects": [
+    {
+      "id": "example-web-platform",
+      "name": "Web Platform Modernization",
+      "description": "Modernize the legacy web platform with updated architecture and tooling",
+      "status": "in-progress",
+      "detailsFile": "projects/example-web-platform.json"
+    },
+    {
+      "id": "example-data-pipeline",
+      "name": "Data Pipeline Automation",
+      "description": "Automate data ingestion and processing pipelines",
+      "status": "completed",
+      "detailsFile": "projects/example-data-pipeline.json"
+    }
+  ]
+}

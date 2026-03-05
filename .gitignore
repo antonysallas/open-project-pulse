@@ -23,9 +23,14 @@ yarn-debug.log*
 yarn-error.log*
 
 # Project data (user-specific, not tracked)
-/public/data/
+/public/data/**
+!/public/data/
+!/public/data/**/*.example
+!/public/data/projects/
+!/public/data/projects/**/*.example
 /reports/
 
 # Bundled fonts (use Google Fonts CDN instead)
 /src/styles/fonts/
 .claude/
+/analysis/
