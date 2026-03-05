@@ -4,9 +4,36 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "========================================="
-echo "  Open Project Pulse"
-echo "========================================="
+echo ""
+echo "  ╔═══════════════════════════════════════════╗"
+echo "  ║                                           ║"
+echo "  ║        ┌─┐┌─┐┌─┐┌┐┐                       ║"
+echo "  ║        │ ││─┘├┤ │││                       ║"
+echo "  ║        └─┘│  └─┘┘└┘                       ║"
+echo "  ║   ┌─┐┬─┐┌─┐ ┐┌─┐┌─┐┌┐┐                    ║"
+echo "  ║   │─┘│┐┘│ │ ││├┤ │  │                     ║"
+echo "  ║   │  │└┘└─┘└┘│└─┘└─┘│                     ║"
+echo "  ║          ┌─┐┬ ┐┬  ┌─┐┌─┐                  ║"
+echo "  ║          │─┘│ ││  └─┐├┤                   ║"
+echo "  ║          │  └─┘└─┘└─┘└─┘                  ║"
+echo "  ║                                           ║"
+echo "  ╚═══════════════════════════════════════════╝"
+echo ""
+
+# --- OS Detection ---
+OS_NAME="Unknown"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    OS_NAME="macOS $(sw_vers -productVersion 2>/dev/null || echo "")"
+elif [[ "$OSTYPE" == "linux"* ]]; then
+    if [ -f /etc/os-release ]; then
+        OS_NAME=$(. /etc/os-release && echo "$NAME $VERSION_ID")
+    else
+        OS_NAME="Linux"
+    fi
+elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* ]]; then
+    OS_NAME="Windows ($(uname -s))"
+fi
+echo "  OS Detected: $OS_NAME"
 echo ""
 
 # --- Node.js check / install ---
@@ -89,13 +116,19 @@ if [ "$NEEDS_SETUP" = true ]; then
     echo "Setting up project data..."
 
     DATA_DIR="public/data"
+    mkdir -p "$DATA_DIR/projects"
 
     if [ ! -f "$DATA_DIR/projects.json" ]; then
-        cp "$DATA_DIR/projects.json.example" "$DATA_DIR/projects.json"
-        echo "  Created projects.json"
+        if [ -f "$DATA_DIR/projects.json.example" ]; then
+            cp "$DATA_DIR/projects.json.example" "$DATA_DIR/projects.json"
+            echo "  Created projects.json"
+        else
+            echo "  Warning: projects.json.example not found, skipping."
+        fi
     fi
 
     for example_file in "$DATA_DIR"/projects/*.json.example; do
+        [ -e "$example_file" ] || continue
         target="${example_file%.example}"
         if [ ! -f "$target" ]; then
             cp "$example_file" "$target"
@@ -143,7 +176,7 @@ fi
 
 # --- Start ---
 
-echo "Starting at http://localhost:$PORT"
-echo "Press Ctrl+C to stop."
+echo "  ▶ Starting at http://localhost:$PORT"
+echo "  Press Ctrl+C to stop."
 echo ""
 PORT=$PORT npm start
