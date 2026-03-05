@@ -55,8 +55,8 @@
   --spacing-unit: 8px;
 
   /* Typography */
-  --font-heading: 'Inter', Arial, sans-serif;
-  --font-body: 'Inter', Arial, sans-serif;
+  --font-heading: 'RedHatDisplay', 'Red Hat Display', Arial, sans-serif;
+  --font-body: 'RedHatText', 'Red Hat Text', Arial, sans-serif;
 }
 
 /* Report Container */

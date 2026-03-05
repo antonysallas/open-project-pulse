@@ -5,8 +5,6 @@ import {
   Button,
   Card,
   CardBody,
-  Page,
-  PageSection,
   ProgressStepper,
   ProgressStep,
   Title,
@@ -352,14 +350,15 @@ function App() {
   };
 
   const getStepVariant = (index: number): "success" | "info" | "pending" | "default" => {
-    if (index < activeStep) return "success";
-    if (index === activeStep) return "info";
+    const effectiveStep = activeStep === 1 && formSubStep === 2 ? 2 : activeStep;
+    if (index < effectiveStep) return "success";
+    if (index === effectiveStep) return "info";
     return "pending";
   };
 
   return (
-    <Page>
-      <PageSection style={{ maxWidth: '1200px', margin: '32px auto', width: '100%', backgroundColor: '#fff' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f7fa' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px', width: '100%' }}>
         <Card style={{ background: 'linear-gradient(to right, #f9f9f9, #ffffff)' }}>
           <CardBody>
             <Title headingLevel="h1" size="xl" style={{ textAlign: 'center', marginBottom: '24px', color: 'var(--primary-blue)' }}>
@@ -373,7 +372,7 @@ function App() {
                   id={`step-${index}`}
                   titleId={`step-${index}-title`}
                   variant={getStepVariant(index)}
-                  isCurrent={index === activeStep}
+                  isCurrent={index === (activeStep === 1 && formSubStep === 2 ? 2 : activeStep)}
                   aria-label={label}
                 >
                   {label}
@@ -429,7 +428,7 @@ function App() {
             </div>
           </CardBody>
         </Card>
-      </PageSection>
+      </div>
 
       {snackbarOpen && (
         <AlertGroup isToast isLiveRegion>
@@ -442,7 +441,7 @@ function App() {
           />
         </AlertGroup>
       )}
-    </Page>
+    </div>
   );
 }
 

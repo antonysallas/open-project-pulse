@@ -53,8 +53,8 @@
   --spacing-unit: 8px;
 
   /* Typography */
-  --font-heading: 'Roboto', Arial, sans-serif;
-  --font-body: 'Roboto', Arial, sans-serif;
+  --font-heading: 'RedHatDisplay', 'Red Hat Display', Arial, sans-serif;
+  --font-body: 'RedHatText', 'Red Hat Text', Arial, sans-serif;
 }
 
 /* Report Container */
