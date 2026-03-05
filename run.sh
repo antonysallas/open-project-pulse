@@ -99,7 +99,8 @@ NEEDS_SETUP=false
 
 if [ ! -d "node_modules" ]; then
     NEEDS_SETUP=true
-elif [ "package.json" -nt "node_modules" ]; then
+elif [ ! -f "node_modules/.package-json-hash" ] || \
+     [ "$(cat node_modules/.package-json-hash 2>/dev/null)" != "$(shasum package.json | cut -d' ' -f1)" ]; then
     NEEDS_SETUP=true
 fi
 
@@ -113,6 +114,7 @@ if [ "$NEEDS_SETUP" = true ]; then
 
     echo "Installing dependencies (this may take a minute)..."
     npm install
+    shasum package.json | cut -d' ' -f1 > node_modules/.package-json-hash
 
     echo ""
     echo "Setting up project data..."
