@@ -1,0 +1,505 @@
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Progress Updates</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background-color: white;
+        border-radius: 10px;
+        border: 1px solid #ddd;
+        overflow: hidden;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+      }
+
+      .report-info {
+        display: flex;
+      }
+
+      .report-box {
+        background-color: #0a3b6c;
+        color: white;
+        padding: 5px 10px;
+        margin-right: 5px;
+        font-weight: bold;
+        font-size: 14px;
+        border: 1px solid #0a3b6c;
+      }
+
+      .date-box {
+        background-color: #f0f0f0;
+        padding: 5px 10px;
+        font-weight: bold;
+        font-size: 14px;
+        border: 1px solid #ddd;
+      }
+
+      .title {
+        font-size: 28px;
+        font-weight: bold;
+        margin: 0 20px;
+      }
+
+      .status-section {
+        display: flex;
+        align-items: center;
+      }
+
+      .status-label {
+        background-color: #0a3b6c;
+        color: white;
+        padding: 5px 15px;
+        font-weight: bold;
+        font-size: 14px;
+        border-radius: 3px;
+      }
+
+      .status-indicator {
+        display: flex;
+        margin-left: 5px;
+        height: 20px;
+        width: 100px;
+        overflow: hidden;
+        border-radius: 3px;
+      }
+
+      .status-red {
+        background-color: #e74c3c;
+        width: 33%;
+        height: 100%;
+      }
+
+      .status-yellow {
+        background-color: #f39c12;
+        width: 33%;
+        height: 100%;
+      }
+
+      .status-green {
+        background-color: #2ecc71;
+        width: 34%;
+        height: 100%;
+      }
+
+      .dropdown-icon {
+        margin-left: 10px;
+        font-size: 20px;
+      }
+
+      .timeline {
+        margin: 20px;
+        position: relative;
+      }
+
+      .timeline-header {
+        display: flex;
+        position: relative;
+      }
+
+      .timeline-date {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+        background-color: #f9e8d2;
+        font-weight: bold;
+      }
+
+      .timeline-marker {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        height: 100%;
+        width: 2px;
+        background-color: #0a3b6c;
+        z-index: 1;
+      }
+
+      .timeline-year {
+        position: absolute;
+        top: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: white;
+        padding: 5px 15px;
+        font-weight: bold;
+        color: #e74c3c;
+        font-size: 18px;
+      }
+
+      .timeline-triangle {
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 15px solid transparent;
+        border-right: 15px solid transparent;
+        border-bottom: 15px solid #7fb3d5;
+        z-index: 2;
+      }
+
+      .sprint-bars {
+        display: flex;
+        margin-top: 1px;
+      }
+
+      .sprint-bar {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+        background-color: #d6e4f0;
+        font-weight: bold;
+      }
+
+      .progress-bar {
+        height: 15px;
+        background-color: #8bc34a;
+        margin: 10px 0;
+        border-radius: 10px;
+      }
+
+      .content-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 15px;
+        margin: 20px;
+      }
+
+      .section {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        overflow: hidden;
+      }
+
+      .section-header {
+        background-color: #0a3b6c;
+        color: white;
+        padding: 10px 15px;
+        font-weight: bold;
+      }
+
+      .section-content {
+        padding: 15px;
+      }
+
+      .subsection-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      .completed-label {
+        color: #2ecc71;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      ul {
+        padding-left: 20px;
+      }
+
+      li {
+        margin-bottom: 10px;
+      }
+
+      .tag {
+        display: inline-block;
+        padding: 5px 15px;
+        color: white;
+        font-weight: bold;
+        border-radius: 3px;
+        margin-right: 10px;
+        margin-bottom: 5px;
+        font-size: 12px;
+      }
+
+      .tag-fyi {
+        background-color: #7d5ba6;
+      }
+
+      .tag-ask {
+        background-color: #e74c3c;
+      }
+
+      .tag-directive {
+        background-color: #8b4513;
+      }
+
+      .tag-approval {
+        background-color: #0a3b6c;
+      }
+
+      .tag-description {
+        display: inline-block;
+        font-size: 12px;
+      }
+
+      .footer {
+        display: flex;
+        justify-content: flex-end;
+        padding: 10px 20px;
+      }
+
+      .logo {
+        height: 50px;
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="report-info">
+          <table style="border-spacing: 0; border-collapse: collapse">
+            <tr>
+              <td style="padding: 0 2px 2px 0"><div class="report-box" style="margin-right: 0">REPORT DATE</div></td>
+              <td style="padding: 0 0 2px 0"><div class="date-box">05-MAR-2026</div></td>
+            </tr>
+            <tr>
+              <td style="padding: 0 2px 0 0"><div class="report-box" style="margin-right: 0">NEXT REPORT</div></td>
+              <td style="padding: 0"><div class="date-box">12-MAR-2026</div></td>
+            </tr>
+          </table>
+        </div>
+
+        <h1 class="title">Project Progress Updates</h1>
+
+        <div class="status-section">
+          <div style="display: flex; align-items: center">
+            <div class="report-box">PROJECT STATUS</div>
+            <div style="position: relative">
+              <div class="status-indicator">
+                <div class="status-red"></div>
+                <div class="status-yellow"></div>
+                <div class="status-green"></div>
+              </div>
+              <div
+                class="dropdown-icon"
+                style="
+                  position: absolute;
+                  top: 0;
+                  right: 12px;
+                  transform: translateY(-90%);
+                  text-align: center;
+                  color: #000;
+                  font-size: 16px;
+                "
+              >
+                &#9660;
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline" style="position: relative">
+        <div class="timeline-year">2026</div>
+
+        <div
+          style="
+            position: absolute;
+            left: 10%;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background-color: #e74c3c;
+            z-index: 10;
+          "
+        ></div>
+
+        <div
+          style="
+            position: absolute;
+            left: 10%;
+            top: -8px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #e74c3c;
+            transform: translateX(-45%);
+            z-index: 11;
+          "
+        ></div>
+
+        <div class="timeline-header" style="width: 100%">
+          <table style="width: 100%; table-layout: fixed; border-collapse: collapse">
+            <tr>
+              <td style="width: 14.28%"><div class="timeline-date">09-Mar</div></td>
+              <td style="width: 14.28%"><div class="timeline-date">16-Mar</div></td>
+              <td style="width: 14.28%"><div class="timeline-date">23-Mar</div></td>
+              <td style="width: 14.28%"><div class="timeline-date">30-Mar</div></td>
+              <td style="width: 14.28%"><div class="timeline-date">06-Apr</div></td>
+              <td style="width: 14.28%"><div class="timeline-date">13-Apr</div></td>
+              <td style="width: 14.28%"><div class="timeline-date">20-Apr</div></td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="sprint-bars" style="width: 100%">
+          <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 2px">
+            <tr>
+              <td colspan="2" style="width: 28.6%">
+                <div class="sprint-bar" style="background-color: #d1ecf1">SPRINT 1</div>
+              </td>
+              <td colspan="2" style="width: 28.6%">
+                <div class="sprint-bar" style="background-color: #d4edda">SPRINT 2</div>
+              </td>
+              <td colspan="2" style="width: 28.6%">
+                <div class="sprint-bar" style="background-color: #d1ecf1">SPRINT 3</div>
+              </td>
+              <td colspan="1" style="width: 14.3%">
+                <div class="sprint-bar" style="background-color: #d4edda">SPRINT 4</div>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div
+          style="
+            position: relative;
+            height: 15px;
+            background-color: #ddd;
+            margin: 10px 0;
+            border-radius: 10px;
+            overflow: hidden;
+          "
+        >
+          <div
+            style="
+              position: absolute;
+              height: 100%;
+              width: 10%;
+              background-color: #8bc34a;
+              border-radius: 10px 0 0 10px;
+            "
+          ></div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px">
+        <div class="section">
+          <div class="section-header">ACCOMPLISHMENTS</div>
+          <div class="section-content">
+            <div class="subsection-title">Current Sprint Goals and Accomplishments (Sprint 1)</div>
+            <ul>
+              <li>
+                Completed initial project setup including repository structure, CI/CD pipeline configuration, and
+                development environment provisioning.
+              </li>
+              <li>Finalized technical architecture review and documented key design decisions.</li>
+              <li>
+                Delivered first iteration of the core module with unit test coverage above 80%.
+              </li>
+              <li>Conducted sprint planning and backlog grooming for upcoming sprints.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">UPCOMING GOALS</div>
+          <div class="section-content">
+            <div class="subsection-title">Goals for Upcoming Sprint (Sprint 2)</div>
+            <ul>
+              <li>
+                Begin development of:
+                <ul>
+                  <li>Feature A: User authentication and authorization module</li>
+                  <li>Feature B: Dashboard analytics and reporting views</li>
+                </ul>
+              </li>
+              <li>
+                Set up integration testing framework and establish end-to-end test suite.
+              </li>
+              <li>Prepare for mid-project review and stakeholder demo.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px">
+        <div class="section">
+          <div class="section-header">PEOPLE AND PROCESS</div>
+          <div class="section-content">
+            <div class="tag tag-fyi">FYI</div>
+            <ul>
+              <li>
+                Team onboarding is complete; all members have access to required tools and environments.
+              </li>
+              <li>
+                Established daily standup cadence and bi-weekly retrospective schedule.
+              </li>
+              <li>
+                Knowledge transfer sessions planned to ensure cross-functional understanding of system components.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">TECHNOLOGY</div>
+          <div class="section-content">
+            <div class="tag tag-fyi">FYI</div>
+            <ul>
+              <li>
+                Evaluated and selected the primary tech stack; documented trade-offs and rationale.
+              </li>
+              <li>
+                Identified potential compatibility issues with third-party dependencies; mitigation plan in place.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin: 20px">
+        <div class="section">
+          <div class="section-header">LEGEND</div>
+          <div class="section-content">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; row-gap: 5px">
+              <div>
+                <div class="tag tag-ask" style="width: 80px; display: inline-block; text-align: center">ASK</div>
+                <div class="tag-description">High risk. Needs urgent resolution by Stakeholders.</div>
+              </div>
+
+              <div>
+                <div class="tag tag-directive" style="width: 80px; display: inline-block; text-align: center">
+                  DIRECTIVE
+                </div>
+                <div class="tag-description">Needs Stakeholders' mandatory instruction.</div>
+              </div>
+
+              <div>
+                <div class="tag tag-approval" style="width: 80px; display: inline-block; text-align: center">
+                  APPROVAL
+                </div>
+                <div class="tag-description">Awaiting Stakeholders' "Yes/No" decision.</div>
+              </div>
+
+              <div>
+                <div class="tag tag-fyi" style="width: 80px; display: inline-block; text-align: center">FYI</div>
+                <div class="tag-description">For information only. No action needed.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

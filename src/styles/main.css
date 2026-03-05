@@ -1,0 +1,238 @@
+/* ===== Font Declarations ===== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
+/* ===== CSS Variables ===== */
+:root {
+  --primary-blue: #1976d2;
+  --light-blue-bg: #f0f7ff;
+  --light-gray-bg: #f8f9fa;
+  --border-color: #e0e0e0;
+  --text-secondary: #666;
+  --white: #ffffff;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+/* ===== Base Styles ===== */
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f7fa;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* ===== Report Styles ===== */
+.report-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: var(--white);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.report-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.report-title {
+  color: var(--primary-blue);
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.report-subtitle {
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.report-section {
+  margin-bottom: 2rem;
+}
+
+.report-section-title {
+  color: var(--primary-blue);
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.report-content {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.report-item {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background-color: var(--light-gray-bg);
+  border-radius: 4px;
+}
+
+.report-item:last-child {
+  margin-bottom: 0;
+}
+
+.report-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.timeline-item {
+  flex: 1;
+  min-width: 200px;
+  padding: 1rem;
+  background-color: var(--light-gray-bg);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.timeline-item-title {
+  font-weight: bold;
+  color: var(--primary-blue);
+  margin-bottom: 0.5rem;
+}
+
+.timeline-item-content {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ===== Form Styles ===== */
+.form-section {
+  margin-bottom: 2rem;
+}
+
+.form-section-title {
+  color: var(--primary-blue);
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.form-field {
+  margin-bottom: 1rem;
+}
+
+.form-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-field input:focus,
+.form-field textarea:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+}
+
+/* ===== Button Styles ===== */
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary {
+  background-color: var(--primary-blue);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background-color: #1565c0;
+}
+
+.btn-secondary {
+  background-color: var(--light-gray-bg);
+  color: var(--text-secondary);
+}
+
+.btn-secondary:hover {
+  background-color: #e0e0e0;
+}
+
+/* ===== Utility Classes ===== */
+.text-center {
+  text-align: center;
+}
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+/* ===== Numbered List Styles ===== */
+.numbered-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.numbered-list li {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.numbered-list li:last-child {
+  margin-bottom: 0;
+}
+
+.numbered-list .number {
+  color: var(--primary-blue);
+  font-weight: 500;
+  min-width: 24px;
+  margin-right: 8px;
+  font-family: var(--font-family);
+  font-size: 14px;
+}
+
+/* ===== Responsive Styles ===== */
+@media (max-width: 768px) {
+  .report-container {
+    padding: 1rem;
+  }
+
+  .timeline-item {
+    min-width: 100%;
+  }
+
+  .form-field input,
+  .form-field textarea {
+    font-size: 16px; /* Prevent zoom on mobile */
+  }
+}
