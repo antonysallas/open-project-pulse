@@ -470,9 +470,13 @@ function App() {
             element.style.position = originalPosition;
 
             const base64 = pdf.output("datauristring").split(",")[1];
-            await saveReportPdf(selectedProject.id, pdfFilename, base64);
+            const savedPath = await saveReportPdf(selectedProject.id, pdfFilename, base64);
 
-            setSnackbarMessage("Report and PDF saved successfully!");
+            if (savedPath) {
+              setSnackbarMessage(`Report and PDF saved successfully! Path: ${savedPath}`);
+            } else {
+              setSnackbarMessage("Report saved, but PDF save location unknown.");
+            }
             setSnackbarSeverity("success");
             setSnackbarOpen(true);
           })

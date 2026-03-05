@@ -178,7 +178,7 @@ export async function saveWeeklyReport(projectId: string, report: WeeklyReport):
 }
 
 // Function to save a PDF report to the reports directory
-export async function saveReportPdf(projectId: string, pdfFilename: string, base64Data: string): Promise<boolean> {
+export async function saveReportPdf(projectId: string, pdfFilename: string, base64Data: string): Promise<string | null> {
   try {
     const response = await fetch(`/api/reports/${projectId}/pdf`, {
       method: 'POST',
@@ -190,9 +190,10 @@ export async function saveReportPdf(projectId: string, pdfFilename: string, base
       throw new Error(`Failed to save PDF: ${response.statusText}`);
     }
 
-    return true;
+    const result = await response.json();
+    return result.path ?? null;
   } catch (error) {
     console.error(`Error saving PDF for ${projectId}:`, error);
-    return false;
+    return null;
   }
 }
