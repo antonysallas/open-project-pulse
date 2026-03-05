@@ -99,6 +99,8 @@ NEEDS_SETUP=false
 
 if [ ! -d "node_modules" ]; then
     NEEDS_SETUP=true
+elif [ "package.json" -nt "node_modules" ]; then
+    NEEDS_SETUP=true
 fi
 
 if [ ! -f "public/data/projects.json" ]; then
