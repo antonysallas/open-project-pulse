@@ -102,7 +102,9 @@ if [ ! -x "$TYPST_BIN" ]; then
     echo ""
 
     if command -v cargo &> /dev/null; then
-        echo "Cargo detected. Installing Typst..."
+        echo "Cargo detected. Updating Rust toolchain..."
+        rustup update stable
+        echo "Installing Typst..."
         cargo install --locked typst-cli
     elif command -v brew &> /dev/null; then
         echo "Homebrew detected. Installing Typst..."
