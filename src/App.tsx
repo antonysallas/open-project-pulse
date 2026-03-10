@@ -9,13 +9,12 @@ import {
   ProgressStep,
   Title,
 } from "@patternfly/react-core";
-import html2pdf from "html2pdf.js";
 import React, { useCallback, useEffect, useState } from "react";
 import ProjectSelector from "./components/ProjectSelector";
 import ReportForm from "./components/ReportForm";
 import "./styles/main.css";
-import { ProjectInfo, ReportData, SerializedTimelineWeek, WeeklyReport, TimelineWeek } from "./types/ReportTypes";
-import { getWeeklyReports, saveWeeklyReport, saveReportPdf } from "./utils/projectService";
+import { ProjectInfo, ReportData, TimelineWeek } from "./types/ReportTypes";
+import { getWeeklyReports, generateTypstPdf } from "./utils/projectService";
 import { getCurrentSprintNumber } from "./utils/projectUtils";
 
 const steps = ["Select Project", "Fill Report Details", "Preview & Generate"];
@@ -242,104 +241,36 @@ function App() {
   const handleGenerateReport = async () => {
     if (!reportData || !selectedProject) return;
 
-    const weeklyReport: WeeklyReport = {
-      reportDate: reportData.reportDate.toISOString().split("T")[0],
-      nextReportDate: reportData.nextReportDate.toISOString().split("T")[0],
-      currentSprint: reportData.currentSprint,
-      completionPercentage: reportData.completionPercentage,
-      daysRemaining: reportData.daysRemaining,
-      status: reportData.status,
-      accomplishments: reportData.accomplishments,
-      upcomingGoals: reportData.upcomingGoals,
-      peopleAndProcess: reportData.peopleAndProcess,
-      technology: reportData.technology,
-      timelineDates: reportData.timelineDates.map(
-        (week): SerializedTimelineWeek => ({
-          date: week.date.toISOString(),
-          label: week.label,
-          sprintNumber: week.sprintNumber,
-          isSprintStart: week.isSprintStart,
-        })
-      ),
-      currentTimelinePosition: reportData.currentTimelinePosition,
-    };
+    setSnackbarMessage("Generating report...");
+    setSnackbarSeverity("info");
+    setSnackbarOpen(true);
 
     try {
-      await saveWeeklyReport(selectedProject.id, weeklyReport);
+      const { blob, savedPath } = await generateTypstPdf(selectedProject.id, reportData);
 
-      const element = document.getElementById("report-preview");
-      if (!element) return;
+      // Trigger browser download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const dateStr = reportData.reportDate.toISOString().split("T")[0];
+      a.href = url;
+      a.download = `${reportData.projectTitle.replace(/\s+/g, "_")}_Report_${dateStr}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-      const originalWidth = element.style.width;
-      const originalHeight = element.style.height;
-      const originalPosition = element.style.position;
-
-      element.style.width = "1200px";
-      element.style.height = "auto";
-      element.style.position = "relative";
-
-      setSnackbarMessage("Generating report...");
-      setSnackbarSeverity("info");
+      if (savedPath) {
+        setSnackbarMessage(`PDF generated and saved! Path: ${savedPath}`);
+      } else {
+        setSnackbarMessage("PDF generated and downloaded successfully!");
+      }
+      setSnackbarSeverity("success");
       setSnackbarOpen(true);
-
-      setTimeout(() => {
-        const contentWidth = element.offsetWidth;
-        const contentHeight = element.scrollHeight;
-        const pdfFilename = `${reportData.projectTitle.replace(/\s+/g, "_")}_Report_${reportData.reportDate.toISOString().split("T")[0]}.pdf`;
-
-        const options = {
-          margin: 10,
-          filename: pdfFilename,
-          image: { type: "png" as const, quality: 1.0 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: true,
-            backgroundColor: "#ffffff",
-            allowTaint: true,
-          },
-          jsPDF: {
-            unit: "px",
-            format: [contentWidth + 40, contentHeight + 40] as [number, number],
-            orientation: "portrait" as const,
-          },
-        };
-
-        html2pdf()
-          .set(options)
-          .from(element)
-          .toPdf()
-          .get("pdf")
-          .then(async (pdf: any) => {
-            element.style.width = originalWidth;
-            element.style.height = originalHeight;
-            element.style.position = originalPosition;
-
-            const base64 = pdf.output("datauristring").split(",")[1];
-            const savedPath = await saveReportPdf(selectedProject.id, pdfFilename, base64);
-
-            if (savedPath) {
-              setSnackbarMessage(`Report and PDF saved successfully! Path: ${savedPath}`);
-            } else {
-              setSnackbarMessage("Report saved, but PDF save location unknown.");
-            }
-            setSnackbarSeverity("success");
-            setSnackbarOpen(true);
-          })
-          .catch((error: Error) => {
-            console.error("Error generating PDF:", error);
-            element.style.width = originalWidth;
-            element.style.height = originalHeight;
-            element.style.position = originalPosition;
-
-            setSnackbarMessage("Error generating PDF. Please try again.");
-            setSnackbarSeverity("danger");
-            setSnackbarOpen(true);
-          });
-      }, 500);
     } catch (error) {
-      console.error("Failed to save report:", error);
-      setSnackbarMessage("Failed to save report. Please try again.");
+      console.error("Failed to generate PDF:", error);
+      setSnackbarMessage(
+        `Failed to generate PDF: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
       setSnackbarSeverity("danger");
       setSnackbarOpen(true);
     }

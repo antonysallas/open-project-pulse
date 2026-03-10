@@ -93,6 +93,42 @@ if [ "$MAJOR_VERSION" -lt 16 ]; then
     fi
 fi
 
+# --- Typst CLI check / install ---
+
+TYPST_BIN="$HOME/.cargo/bin/typst"
+
+if [ ! -x "$TYPST_BIN" ]; then
+    echo "Typst CLI not found at $TYPST_BIN"
+    echo ""
+
+    if command -v cargo &> /dev/null; then
+        echo "Cargo detected. Installing Typst..."
+        cargo install --locked typst-cli
+    elif command -v brew &> /dev/null; then
+        echo "Homebrew detected. Installing Typst..."
+        brew install typst
+        TYPST_BIN="$(command -v typst)"
+    else
+        echo "Installing Typst via official installer..."
+        curl -fsSL https://typst.community/typst-install/install.sh | sh
+    fi
+
+    if ! command -v typst &> /dev/null && [ ! -x "$TYPST_BIN" ]; then
+        echo "ERROR: Typst CLI could not be installed."
+        echo ""
+        echo "Install it manually:"
+        echo "  cargo install --locked typst-cli"
+        echo "  or visit: https://github.com/typst/typst#installation"
+        echo ""
+        exit 1
+    fi
+    echo "Typst installed successfully."
+    echo ""
+else
+    TYPST_VERSION=$("$TYPST_BIN" --version 2>/dev/null || echo "unknown")
+    echo "Found Typst: $TYPST_VERSION"
+fi
+
 # --- First-time setup (if needed) ---
 
 NEEDS_SETUP=false

@@ -1,48 +1,92 @@
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
+const os = require('os');
+const { generateTypstSource } = require('../server/typstGenerator');
 
 // Save reports outside public/ to avoid triggering CRA's hot reload
 const REPORTS_DIR = path.join(__dirname, '..', 'reports');
+const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'report-template.typ');
+const TYPST_BIN = path.join(os.homedir(), '.cargo', 'bin', 'typst');
 
 module.exports = function (app) {
   // Parse JSON bodies
   app.use('/api', require('express').json({ limit: '50mb' }));
 
-  // Save report JSON
-  app.post('/api/reports/:projectId', (req, res) => {
+  // Generate PDF from ReportData via Typst
+  app.post('/api/reports/:projectId/generate-pdf', (req, res) => {
     const { projectId } = req.params;
-    const { filename, data } = req.body;
+    const { reportData } = req.body;
 
-    if (!filename || !data) {
-      return res.status(400).json({ error: 'Missing filename or data' });
+    if (!reportData) {
+      return res.status(400).json({ error: 'Missing reportData' });
     }
 
-    const reportsDir = path.join(REPORTS_DIR, projectId);
-    fs.mkdirSync(reportsDir, { recursive: true });
+    let tmpTyp = null;
+    let tmpPdf = null;
 
-    const filePath = path.join(reportsDir, filename);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    try {
+      // Read template
+      const templateSource = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
 
-    res.json({ ok: true, path: filePath });
-  });
+      // Generate Typst source
+      const typstSource = generateTypstSource(reportData, templateSource);
 
-  // Save report PDF (base64-encoded)
-  app.post('/api/reports/:projectId/pdf', (req, res) => {
-    const { projectId } = req.params;
-    const { filename, base64 } = req.body;
+      // Write to temp file
+      tmpTyp = path.join(os.tmpdir(), `report-${projectId}-${Date.now()}.typ`);
+      tmpPdf = tmpTyp.replace(/\.typ$/, '.pdf');
+      fs.writeFileSync(tmpTyp, typstSource);
 
-    if (!filename || !base64) {
-      return res.status(400).json({ error: 'Missing filename or base64 data' });
+      // Compile with Typst
+      const fontDirs = [
+        '/usr/share/fonts',
+        path.join(os.homedir(), '.local/share/fonts'),
+        path.join(os.homedir(), '.fonts'),
+      ].filter((d) => fs.existsSync(d));
+
+      const args = ['compile', tmpTyp, tmpPdf];
+      for (const dir of fontDirs) {
+        args.push('--font-path', dir);
+      }
+
+      execFileSync(TYPST_BIN, args, { timeout: 30000 });
+
+      // Read generated PDF
+      const pdfBuffer = fs.readFileSync(tmpPdf);
+
+      // Save a copy to reports directory
+      const reportsDir = path.join(REPORTS_DIR, projectId);
+      fs.mkdirSync(reportsDir, { recursive: true });
+
+      const reportDate = new Date(reportData.reportDate);
+      const dateStr = reportDate.toISOString().split('T')[0];
+      const safeTitle = (reportData.projectTitle || 'Report').replace(/\s+/g, '_');
+      const pdfFilename = `${safeTitle}_Report_${dateStr}.pdf`;
+      const savedPath = path.join(reportsDir, pdfFilename);
+      fs.writeFileSync(savedPath, pdfBuffer);
+
+      // Return PDF as response
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${pdfFilename}"`,
+        'X-Saved-Path': savedPath,
+      });
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('Error generating PDF:', error.message);
+      if (error.stderr) {
+        console.error('Typst stderr:', error.stderr.toString());
+      }
+      res.status(500).json({
+        error: 'Failed to generate PDF',
+        details: error.message,
+        stderr: error.stderr ? error.stderr.toString() : undefined,
+      });
+    } finally {
+      // Clean up temp files
+      try { if (tmpTyp && fs.existsSync(tmpTyp)) fs.unlinkSync(tmpTyp); } catch (_) {}
+      try { if (tmpPdf && fs.existsSync(tmpPdf)) fs.unlinkSync(tmpPdf); } catch (_) {}
     }
-
-    const reportsDir = path.join(REPORTS_DIR, projectId);
-    fs.mkdirSync(reportsDir, { recursive: true });
-
-    const filePath = path.join(reportsDir, filename);
-    const buffer = Buffer.from(base64, 'base64');
-    fs.writeFileSync(filePath, buffer);
-
-    res.json({ ok: true, path: filePath });
   });
 
   // Serve reports directory for loading saved reports

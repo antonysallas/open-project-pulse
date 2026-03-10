@@ -1,5 +1,4 @@
-import { ProjectInfo, WeeklyReport } from '../types/ReportTypes';
-import { getReportFilename } from './projectUtils';
+import { ProjectInfo, ReportData, WeeklyReport } from '../types/ReportTypes';
 
 // Function to get all available projects
 export async function getProjects(): Promise<ProjectInfo[]> {
@@ -142,58 +141,39 @@ export async function loadWeeklyReport(projectId: string, reportFile: string): P
   }
 }
 
-// Function to save a new weekly report
-export async function saveWeeklyReport(projectId: string, report: WeeklyReport): Promise<boolean> {
-  try {
-    const reportDate = new Date(report.reportDate);
-    const filename = getReportFilename(projectId, reportDate);
+// Generate PDF via server-side Typst compilation
+export async function generateTypstPdf(
+  projectId: string,
+  reportData: ReportData
+): Promise<{ blob: Blob; savedPath: string | null }> {
+  // Serialize ReportData: Dates -> ISO strings, timelineDates -> serialized
+  const serialized = {
+    ...reportData,
+    reportDate: reportData.reportDate.toISOString(),
+    nextReportDate: reportData.nextReportDate.toISOString(),
+    projectStartDate: reportData.projectStartDate.toISOString(),
+    projectEndDate: reportData.projectEndDate.toISOString(),
+    timelineDates: reportData.timelineDates.map((week) => ({
+      date: week.date.toISOString(),
+      label: week.label,
+      sprintNumber: week.sprintNumber,
+      isSprintStart: week.isSprintStart,
+    })),
+  };
 
-    const cleanedReport = {
-      reportDate: report.reportDate,
-      nextReportDate: report.nextReportDate,
-      currentSprint: report.currentSprint,
-      status: report.status,
-      accomplishments: report.accomplishments,
-      upcomingGoals: report.upcomingGoals,
-      peopleAndProcess: report.peopleAndProcess,
-      technology: report.technology,
-      currentTimelinePosition: report.currentTimelinePosition
-    };
+  const response = await fetch(`/api/reports/${projectId}/generate-pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reportData: serialized }),
+  });
 
-    const response = await fetch(`/api/reports/${projectId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename, data: cleanedReport }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to save report: ${response.statusText}`);
-    }
-
-    return true;
-  } catch (error) {
-    console.error(`Error saving report for ${projectId}:`, error);
-    return false;
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(error.details || error.error || 'Failed to generate PDF');
   }
-}
 
-// Function to save a PDF report to the reports directory
-export async function saveReportPdf(projectId: string, pdfFilename: string, base64Data: string): Promise<string | null> {
-  try {
-    const response = await fetch(`/api/reports/${projectId}/pdf`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: pdfFilename, base64: base64Data }),
-    });
+  const blob = await response.blob();
+  const savedPath = response.headers.get('X-Saved-Path');
 
-    if (!response.ok) {
-      throw new Error(`Failed to save PDF: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    return result.path ?? null;
-  } catch (error) {
-    console.error(`Error saving PDF for ${projectId}:`, error);
-    return null;
-  }
+  return { blob, savedPath };
 }
