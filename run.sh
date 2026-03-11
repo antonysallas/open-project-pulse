@@ -95,10 +95,10 @@ fi
 
 # --- Typst CLI check / install ---
 
-TYPST_BIN="$HOME/.cargo/bin/typst"
+TYPST_BIN="$(command -v typst 2>/dev/null || echo "$HOME/.cargo/bin/typst")"
 
 if [ ! -x "$TYPST_BIN" ]; then
-    echo "Typst CLI not found at $TYPST_BIN"
+    echo "Typst CLI not found"
     echo ""
 
     if command -v cargo &> /dev/null; then

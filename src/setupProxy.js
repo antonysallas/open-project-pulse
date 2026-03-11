@@ -7,7 +7,19 @@ const { generateTypstSource } = require('../server/typstGenerator');
 // Save reports outside public/ to avoid triggering CRA's hot reload
 const REPORTS_DIR = path.join(__dirname, '..', 'reports');
 const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'report-template.typ');
-const TYPST_BIN = path.join(os.homedir(), '.cargo', 'bin', 'typst');
+const TYPST_BIN = (() => {
+  // Check common install locations, then fall back to PATH lookup
+  const candidates = [
+    path.join(os.homedir(), '.cargo', 'bin', 'typst'),
+    '/usr/local/bin/typst',
+    '/usr/bin/typst',
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  // Fall back to bare name — relies on PATH resolution
+  return 'typst';
+})();
 
 module.exports = function (app) {
   // Parse JSON bodies
@@ -42,6 +54,9 @@ module.exports = function (app) {
         '/usr/share/fonts',
         path.join(os.homedir(), '.local/share/fonts'),
         path.join(os.homedir(), '.fonts'),
+        '/Library/Fonts',
+        path.join(os.homedir(), 'Library', 'Fonts'),
+        '/System/Library/Fonts',
       ].filter((d) => fs.existsSync(d));
 
       const args = ['compile', tmpTyp, tmpPdf];
