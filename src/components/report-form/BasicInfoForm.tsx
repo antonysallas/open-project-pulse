@@ -14,7 +14,7 @@ import {
 } from '@patternfly/react-core';
 import dayjs from 'dayjs';
 import { ReportData, ProjectInfo } from '../../types/ReportTypes';
-import { generateTimelineDatesFromSprints, findCurrentTimelinePosition, generatePreEngagementWithSprintsTimeline } from './DateUtils';
+import { generateTimelineDatesFromSprints, findCurrentTimelinePosition } from './DateUtils';
 
 interface BasicInfoFormProps {
   reportData: ReportData;
@@ -75,23 +75,14 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ reportData, onDataChange,
 
   useEffect(() => {
     if (reportData.projectSprints && reportData.projectSprints.length > 0) {
-      let newDates;
-      if (reportData.projectPhase === 'pre-engagement') {
-        newDates = generatePreEngagementWithSprintsTimeline(
-          reportData.projectSprints,
-          selectedProject.preEngagementStartDate
-        );
-      } else {
-        newDates = generateTimelineDatesFromSprints(reportData.projectSprints);
-      }
-
+      const newDates = generateTimelineDatesFromSprints(reportData.projectSprints);
       onDataChange({
         timelineDates: newDates,
         currentTimelinePosition: findCurrentTimelinePosition(newDates, reportData.reportDate)
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportData.projectSprints, reportData.reportDate, reportData.projectPhase, selectedProject.preEngagementStartDate]);
+  }, [reportData.projectSprints, reportData.reportDate]);
 
   const statusColor = reportData.status === 'on-track' ? '#4caf50' :
     reportData.status === 'at-risk' ? '#ff9800' : '#f44336';
@@ -185,7 +176,7 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({ reportData, onDataChange,
                 const phase = value as 'pre-engagement' | 'active';
                 onDataChange({
                   projectPhase: phase,
-                  currentSprint: phase === 'pre-engagement' ? -1 : 0
+                  currentSprint: phase === 'pre-engagement' ? 0 : 1
                 });
               }}
               aria-label="Project Phase"

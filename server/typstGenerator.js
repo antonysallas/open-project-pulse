@@ -52,7 +52,7 @@ function generateSprintBars(reportData) {
   return sprintNumbers.map((sprintNumber) => {
     const weeksInSprint = dates.filter((d) => d.sprintNumber === sprintNumber).length;
     const isActive = sprintNumber === reportData.currentSprint;
-    const isPreEngagement = sprintNumber === -1;
+    const isPreEngagement = sprintNumber <= 0;
 
     const bar = {
       label: isPreEngagement ? 'Prep' : `Sprint ${sprintNumber}`,
@@ -69,6 +69,10 @@ function generateSprintBars(reportData) {
 /**
  * Calculate marker position as percentage of the timeline.
  * Mirrors calculatePosition() in TimelineSection.tsx.
+ *
+ * Each date label is centered in its equal-width column, so the position
+ * for date[i] is at the center of column i: (i + 0.5) / N * 100%.
+ * We interpolate linearly between column centers based on elapsed time.
  */
 function calculateMarkerPosition(reportData) {
   const dates = reportData.timelineDates || [];
@@ -76,12 +80,14 @@ function calculateMarkerPosition(reportData) {
 
   const reportDate = new Date(reportData.reportDate);
   const reportTime = reportDate.getTime();
+  const N = dates.length;
+  const colWidth = 100 / N;
 
-  // Find which segment contains the report date
+  // Find which segment (date[i] → date[i+1]) contains the report date
   let segmentStartIndex = 0;
   let segmentEndIndex = 1;
 
-  for (let i = 0; i < dates.length - 1; i++) {
+  for (let i = 0; i < N - 1; i++) {
     const currentDate = new Date(dates[i].date).getTime();
     const nextDate = new Date(dates[i + 1].date).getTime();
     if (reportTime >= currentDate && reportTime <= nextDate) {
@@ -89,19 +95,25 @@ function calculateMarkerPosition(reportData) {
       segmentEndIndex = i + 1;
       break;
     }
+    // If past the last segment, clamp to the last one
+    if (i === N - 2 && reportTime > nextDate) {
+      segmentStartIndex = i;
+      segmentEndIndex = i + 1;
+    }
   }
 
+  // Column-center positions for the segment boundaries
+  const startCenter = (segmentStartIndex + 0.5) * colWidth;
+  const endCenter = (segmentEndIndex + 0.5) * colWidth;
+
+  // Interpolate by time within the segment
   const segmentStart = new Date(dates[segmentStartIndex].date).getTime();
   const segmentEnd = new Date(dates[segmentEndIndex].date).getTime();
   const segmentDurationMs = segmentEnd - segmentStart;
   const msIntoSegment = reportTime - segmentStart;
+  const fraction = segmentDurationMs > 0 ? msIntoSegment / segmentDurationMs : 0;
 
-  const totalSegments = dates.length;
-  const segmentWidth = 100 / totalSegments;
-  const positionInSegment = segmentDurationMs > 0 ? msIntoSegment / segmentDurationMs : 0;
-
-  const segmentStartPosition = (segmentStartIndex / totalSegments) * 100;
-  const finalPosition = segmentStartPosition + positionInSegment * segmentWidth;
+  const finalPosition = startCenter + fraction * (endCenter - startCenter);
 
   return Math.min(Math.max(Number(finalPosition.toFixed(1)), 0), 100);
 }

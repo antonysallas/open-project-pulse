@@ -7,43 +7,52 @@ interface TimelineSectionProps {
 }
 
 const TimelineSection: React.FC<TimelineSectionProps> = ({ reportData }) => {
-  // Calculate position as percentage for timeline marker and progress bar
+  // Calculate position as percentage for timeline marker and progress bar.
+  // Each date label is centered in its equal-width column, so the position
+  // for date[i] is at the center of column i: (i + 0.5) / N * 100%.
+  // We interpolate linearly between column centers based on elapsed days.
   const calculatePosition = (): number => {
+    const dates = reportData.timelineDates;
+    if (dates.length < 2) return 0;
+
     const reportDate = dayjs(reportData.reportDate);
     const reportTime = reportDate.valueOf();
-    
-    // Find which segment contains the report date
+    const N = dates.length;
+    const colWidth = 100 / N;
+
+    // Find which segment (date[i] → date[i+1]) contains the report date
     let segmentStartIndex = 0;
     let segmentEndIndex = 1;
-    
-    for (let i = 0; i < reportData.timelineDates.length - 1; i++) {
-      const currentDate = new Date(reportData.timelineDates[i].date).getTime();
-      const nextDate = new Date(reportData.timelineDates[i + 1].date).getTime();
-      
+
+    for (let i = 0; i < N - 1; i++) {
+      const currentDate = new Date(dates[i].date).getTime();
+      const nextDate = new Date(dates[i + 1].date).getTime();
+
       if (reportTime >= currentDate && reportTime <= nextDate) {
         segmentStartIndex = i;
         segmentEndIndex = i + 1;
         break;
       }
+      // If past the last segment, clamp to the last one
+      if (i === N - 2 && reportTime > nextDate) {
+        segmentStartIndex = i;
+        segmentEndIndex = i + 1;
+      }
     }
-    
-    // Calculate position within the segment
-    const segmentStart = dayjs(reportData.timelineDates[segmentStartIndex].date);
-    const segmentEnd = dayjs(reportData.timelineDates[segmentEndIndex].date);
+
+    // Column-center positions for the segment boundaries
+    const startCenter = (segmentStartIndex + 0.5) * colWidth;
+    const endCenter = (segmentEndIndex + 0.5) * colWidth;
+
+    // Interpolate by days within the segment
+    const segmentStart = dayjs(dates[segmentStartIndex].date);
+    const segmentEnd = dayjs(dates[segmentEndIndex].date);
     const segmentDuration = segmentEnd.diff(segmentStart, 'day');
     const daysIntoSegment = reportDate.diff(segmentStart, 'day');
-    
-    // Calculate the segment width as percentage of total timeline
-    const totalSegments = reportData.timelineDates.length;
-    const segmentWidth = 100 / totalSegments;
-    
-    // Position within the segment
-    const positionInSegment = segmentDuration > 0 ? (daysIntoSegment / segmentDuration) : 0;
-    
-    // Final position: segment start position + position within segment
-    const segmentStartPosition = (segmentStartIndex / totalSegments) * 100;
-    const finalPosition = segmentStartPosition + (positionInSegment * segmentWidth);
-    
+    const fraction = segmentDuration > 0 ? (daysIntoSegment / segmentDuration) : 0;
+
+    const finalPosition = startCenter + fraction * (endCenter - startCenter);
+
     return Math.min(Math.max(finalPosition, 0), 100);
   };
 
@@ -101,7 +110,7 @@ const TimelineSection: React.FC<TimelineSectionProps> = ({ reportData }) => {
                       const weeksInSprint = reportData.timelineDates.filter(week => week.sprintNumber === sprintNumber).length;
                       const sprintWidthPercentage = (weeksInSprint / reportData.timelineDates.length) * 100;
                       const isActiveSprint = sprintNumber === reportData.currentSprint;
-                      const isPreEngagement = sprintNumber === -1;
+                      const isPreEngagement = sprintNumber <= 0;
 
                       return (
                         <td

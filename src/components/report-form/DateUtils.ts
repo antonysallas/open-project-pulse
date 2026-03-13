@@ -113,8 +113,9 @@ export const findCurrentTimelinePosition = (weeks: TimelineWeek[], currentDate: 
  * Creates two entries for pre-engagement (pre-engagement start to Sprint 0 start), then adds all sprints
  */
 export const generatePreEngagementWithSprintsTimeline = (
-  sprints: Sprint[], 
-  preEngagementStartDate?: string
+  sprints: Sprint[],
+  preEngagementStartDate?: string,
+  projectStartDate?: string
 ): TimelineWeek[] => {
   if (!sprints || sprints.length === 0) {
     return [];
@@ -123,30 +124,38 @@ export const generatePreEngagementWithSprintsTimeline = (
   const weeks: TimelineWeek[] = [];
   const today = new Date();
   const sprint0Start = new Date(sprints[0].startDate);
-  
-  // Use pre-engagement start date if provided, otherwise use today
-  const preEngagementStart = preEngagementStartDate 
-    ? new Date(preEngagementStartDate) 
+
+  // Use pre-engagement start date if provided, then project start date, then today as last resort
+  const preEngagementStart = preEngagementStartDate
+    ? new Date(preEngagementStartDate)
+    : projectStartDate
+    ? new Date(projectStartDate)
     : today;
-  
-  // Only add pre-engagement if Sprint 0 hasn't started yet
+
+  // Only add pre-engagement if Sprint 1 hasn't started yet
   if (today < sprint0Start) {
-    // Add pre-engagement period (pre-engagement start to Sprint 0 start)
+    // Calculate a midpoint date for the prep phase to give the PREP bar
+    // a 2-column span. The prep phase runs from projectStart to sprint1Start.
+    const prepStartMs = preEngagementStart.getTime();
+    const sprint1StartMs = sprint0Start.getTime();
+    const midpointMs = prepStartMs + Math.floor((sprint1StartMs - prepStartMs) / 2);
+    const midpointDate = new Date(midpointMs);
+
     weeks.push({
       date: new Date(preEngagementStart),
       label: formatShortDate(preEngagementStart),
-      sprintNumber: -1, // -1 indicates pre-engagement
+      sprintNumber: -1,
       isSprintStart: true
     });
-    
+
     weeks.push({
-      date: new Date(sprint0Start),
-      label: formatShortDate(sprint0Start),
-      sprintNumber: -1, // Still part of pre-engagement block
+      date: midpointDate,
+      label: formatShortDate(midpointDate),
+      sprintNumber: -1,
       isSprintStart: false
     });
   }
-  
+
   // Add all regular sprints
   const sprintWeeks = generateTimelineDatesFromSprints(sprints);
   weeks.push(...sprintWeeks);

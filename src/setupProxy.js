@@ -77,8 +77,12 @@ module.exports = function (app) {
       const dateStr = reportDate.toISOString().split('T')[0];
       const safeTitle = (reportData.projectTitle || 'Report').replace(/\s+/g, '_');
       const pdfFilename = `${safeTitle}_Report_${dateStr}.pdf`;
+      const typFilename = `${safeTitle}_Report_${dateStr}.typ`;
       const savedPath = path.join(reportsDir, pdfFilename);
+      const savedTypPath = path.join(reportsDir, typFilename);
       fs.writeFileSync(savedPath, pdfBuffer);
+      fs.copyFileSync(tmpTyp, savedTypPath);
+      console.log('DEBUG: Typst source saved to:', savedTypPath);
 
       // Return PDF as response
       res.set({
@@ -98,7 +102,7 @@ module.exports = function (app) {
         stderr: error.stderr ? error.stderr.toString() : undefined,
       });
     } finally {
-      // Clean up temp files
+      // Clean up temp files (debug .typ is saved to reports dir above)
       try { if (tmpTyp && fs.existsSync(tmpTyp)) fs.unlinkSync(tmpTyp); } catch (_) {}
       try { if (tmpPdf && fs.existsSync(tmpPdf)) fs.unlinkSync(tmpPdf); } catch (_) {}
     }

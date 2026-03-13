@@ -401,10 +401,16 @@
 
   // === PEOPLE AND PROCESS & TECHNOLOGY (side by side) ===
 
-  // Group items by type for a section
+  // Group items by type for a section, preserving the order of first appearance
   let render-items-by-type(items) = {
-    let item-types = ("ASK", "APPROVAL", "DIRECTIVE", "FYI")
-    for tag-type in item-types {
+    // Derive type order from items (order of first appearance)
+    let seen-types = ()
+    for item in items {
+      if item.type not in seen-types {
+        seen-types = seen-types + (item.type,)
+      }
+    }
+    for tag-type in seen-types {
       let filtered = items.filter(it => it.type == tag-type)
       if filtered.len() > 0 {
         tag-badge(tag-type)
@@ -497,11 +503,11 @@
 
 #report(
   project-title: "AIS AI Labs Residency",
-  report-date: "04-Mar-2026",
-  next-report-date: "11-Mar-2026",
+  report-date: "13-Mar-2026",
+  next-report-date: "20-Mar-2026",
   status: "delayed",
   year: "2026",
-  timeline-dates: ("04-Mar", "20-Mar", "23-Mar", "27-Mar", "30-Mar", "03-Apr", "06-Apr", "10-Apr", "20-Apr", "24-Apr", "27-Apr", "01-May"),
+  timeline-dates: ("23-Feb", "20-Mar", "23-Mar", "27-Mar", "30-Mar", "03-Apr", "06-Apr", "10-Apr", "20-Apr", "24-Apr", "27-Apr", "01-May"),
   sprint-bars: (
     (label: "Prep", span: 2, prep: true),
     (label: "Sprint 1", span: 2, active: false),
@@ -510,9 +516,9 @@
     (label: "Sprint 4", span: 2, active: false),
     (label: "Sprint 5", span: 2, active: false),
   ),
-  progress-percentage: 4,
-  marker-position: 4,
-  current-sprint: -1,
+  progress-percentage: 10.2,
+  marker-position: 10.2,
+  current-sprint: 0,
   project-goals: (
     "Develop a custom LLM-based intent and NLU Engine to replace Nuance by fine-tuning an opensource model on AIS's proprietary chat dataset",
     "Provide full ownership and extensibility by enabling AIS team with hands-on training on Red Hat OpenShift AI operations",

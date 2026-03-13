@@ -12,7 +12,13 @@ interface ProcessedItem {
 }
 
 const ItemsByTypeSection: React.FC<ItemsByTypeSectionProps> = ({ title, items }) => {
-  const itemTypes: ItemType[] = ['ASK', 'APPROVAL', 'DIRECTIVE', 'FYI'];
+  // Derive type order from the items themselves (order of first appearance)
+  const itemTypes: ItemType[] = [];
+  for (const item of items) {
+    if (!itemTypes.includes(item.type)) {
+      itemTypes.push(item.type);
+    }
+  }
   
   /**
    * Processes text input to create an array of individual items for display
