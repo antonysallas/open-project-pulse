@@ -19,7 +19,7 @@
 #   PULSE_VERSION         a release tag such as v0.1.0 (default: the latest release)
 #   PULSE_HOME            where the app and your data live
 #   PULSE_BIN_DIR         where the pulse command goes (default: ~/.local/bin)
-#   PULSE_NO_MODIFY_PATH  set to 1 to leave your shell profile alone
+#   PULSE_NO_MODIFY_PATH  set to 1 to leave your shell profiles alone
 #   PULSE_FROM_SOURCE     set to 1 to build from the main branch instead of a release
 #   PULSE_DOWNLOAD_URL    a folder (https:// or file://) holding the release files, for a mirror
 #   PULSE_SOURCE_URL      a source archive (.tar.gz) to build from, for a mirror
@@ -191,6 +191,16 @@ add_line() { # FILE LINE
   say "Added $BIN_DIR to your PATH in $1"
 }
 
+# Prints the name of the shell that started this script, if a shell we know did.
+running_shell() {
+  name=$(ps -o comm= -p "$PPID" 2>/dev/null) || return 0
+  name=${name##*/} # macOS can give the full path
+  name=${name#-}   # and a login shell's name starts with a dash
+  case "$name" in
+    zsh | bash | fish) say "$name" ;;
+  esac
+}
+
 setup_path() {
   ON_PATH=yes
   case ":$PATH:" in
@@ -203,7 +213,16 @@ setup_path() {
     *) shown="\$HOME/${BIN_DIR#"$HOME"/}" ;;
   esac
   line="export PATH=\"$shown:\$PATH\""
-  case "$(basename "${SHELL:-sh}")" in
+  # $SHELL is the login shell, and the terminal may be running a different one.
+  # That one needs the line too, or only the login shell ever finds pulse.
+  login=$(basename "${SHELL:-sh}")
+  add_to_profile "$login"
+  running=$(running_shell)
+  [ -z "$running" ] || [ "$running" = "$login" ] || add_to_profile "$running"
+}
+
+add_to_profile() { # SHELL_NAME
+  case "$1" in
     zsh) add_line "${ZDOTDIR:-$HOME}/.zshrc" "$line" ;;
     bash)
       add_line "$HOME/.bashrc" "$line"
@@ -254,17 +273,29 @@ main() {
     sample_note="(The sample project couldn't be added. Pulse itself is fine.)"
   say ""
   say "$installed is installed."
-  say ""
-  if [ "$ON_PATH" = no ]; then
-    say "Open a new terminal, or run this in this one:"
-    say "  export PATH=\"$BIN_DIR:\$PATH\""
-    say ""
-  fi
-  say "Start it with:  pulse"
-  say "Your data:      $PULSE_HOME/data"
+  say "Your data: $PULSE_HOME/data"
   if [ -n "$sample_note" ]; then
     say ""
     say "$sample_note"
+  fi
+  say ""
+  if [ "$ON_PATH" = yes ]; then
+    say "Start it with:  pulse"
+    return
+  fi
+  # A script can't change the PATH of the terminal that started it, so plain
+  # `pulse` won't work in this one, whatever was added to the profiles.
+  case "$launcher" in
+    *[!A-Za-z0-9_./-]*) to_type=$(sh_quote "$launcher") ;;
+    *) to_type="$launcher" ;;
+  esac
+  say "Start it now with:"
+  say "  $to_type"
+  say ""
+  if [ "${PULSE_NO_MODIFY_PATH:-}" = 1 ]; then
+    say "To start it with just \"pulse\", add this folder to your PATH: $BIN_DIR"
+  else
+    say "In a new terminal window, just type:  pulse"
   fi
 }
 
