@@ -1,0 +1,23 @@
+{
+  "reportDate": "2026-03-12",
+  "nextReportDate": "2026-03-19",
+  "status": "on-track",
+  "locked": true,
+  "accomplishments": [
+    { "text": "<strong>Sign-in:</strong> Customers can sign in and reset a password on the test site.", "type": "FYI" },
+    { "text": "<strong>Designs:</strong> Final page designs for orders and invoices are signed off.", "type": "FYI" },
+    { "text": "<strong>Customer records:</strong> The first test copy loaded without errors.", "type": "FYI" }
+  ],
+  "upcomingGoals": [
+    { "text": "<strong>Orders:</strong> Build the order history page.", "type": "FYI" },
+    { "text": "<strong>Accounts:</strong> Let customers update their contact details.", "type": "FYI" },
+    { "text": "<strong>Payments:</strong> Ask the payment provider for a test account.", "type": "FYI" }
+  ],
+  "peopleAndProcess": [
+    { "text": "<strong>Team:</strong> A second developer joined the build team this week.", "type": "FYI" }
+  ],
+  "technology": [
+    { "text": "<strong>Test site:</strong> It now rebuilds itself after every change.", "type": "FYI" }
+  ],
+  "draft": false
+}

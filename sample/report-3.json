@@ -1,0 +1,24 @@
+{
+  "reportDate": "2026-03-26",
+  "nextReportDate": "2026-04-02",
+  "status": "at-risk",
+  "statusReason": "<strong>Payment test account:</strong> The provider hasn't sent it yet, and billing work can't start without it.",
+  "locked": true,
+  "accomplishments": [
+    { "text": "<strong>Invoices:</strong> Customers can list and download their invoices.", "type": "FYI" },
+    { "text": "<strong>Orders:</strong> Search works across the whole order history.", "type": "FYI" },
+    { "text": "<strong>Support form:</strong> Two contact centre team leads reviewed the first draft.", "type": "FYI" }
+  ],
+  "upcomingGoals": [
+    { "text": "<strong>Billing:</strong> Start card payments as soon as the test account arrives.", "type": "FYI" },
+    { "text": "<strong>Support form:</strong> Make the changes the team leads asked for.", "type": "FYI" },
+    { "text": "<strong>Pilot:</strong> Agree how pilot customers will be chosen.", "type": "FYI" }
+  ],
+  "peopleAndProcess": [
+    { "text": "<strong>Pilot:</strong> Sales to suggest customers from at least three regions.", "type": "ASK" }
+  ],
+  "technology": [
+    { "text": "<strong>Payment provider:</strong> Chase the test account through our account manager.", "type": "ASK" }
+  ],
+  "draft": false
+}

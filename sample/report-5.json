@@ -1,0 +1,24 @@
+{
+  "reportDate": "2026-04-09",
+  "nextReportDate": "2026-04-16",
+  "status": "at-risk",
+  "statusReason": "<strong>Catching up on billing:</strong> The test account arrived and the second tester has started, but billing is still four days behind.",
+  "accomplishments": [
+    { "text": "<strong>Payment provider:</strong> The test account arrived after the call.", "type": "FYI" },
+    { "text": "<strong>Billing:</strong> Test card payments now go through the real provider.", "type": "FYI" },
+    { "text": "<strong>Support requests:</strong> New requests reach the contact centre's queue.", "type": "FYI" }
+  ],
+  "upcomingGoals": [
+    { "text": "<strong>Billing:</strong> Finish refunds and failed payments.", "type": "FYI" },
+    { "text": "<strong>Testing:</strong> Test orders and search from start to finish.", "type": "FYI" },
+    { "text": "<strong>Pilot:</strong> Invite customers from the list Sales provided.", "type": "FYI" }
+  ],
+  "peopleAndProcess": [
+    { "text": "<strong>Extra tester:</strong> Approved, and started this week.", "type": "FYI" },
+    { "text": "<strong>Pilot invitations:</strong> Decide whether account managers or the project team send them.", "type": "APPROVAL" }
+  ],
+  "technology": [
+    { "text": "<strong>Security review:</strong> The security team needs to book a slot before the pilot.", "type": "ASK" }
+  ],
+  "draft": false
+}

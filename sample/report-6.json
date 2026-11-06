@@ -1,0 +1,29 @@
+{
+  "reportDate": "2026-04-16",
+  "nextReportDate": "2026-04-23",
+  "status": "at-risk",
+  "statusReason": "<strong>The pilot depends on the security review:</strong> Billing is finished, but the review found two issues. The pilot can start on time only if they are settled this week.",
+  "accomplishments": [
+    { "text": "<strong>Billing:</strong> Customers can view invoices, pay by card and get refunds on the test site.", "type": "FYI" },
+    { "text": "<strong>Orders:</strong> Order history and search passed testing with no serious faults.", "type": "FYI" },
+    { "text": "<strong>Pilot:</strong> Forty customers from three regions agreed to take part.", "type": "FYI" },
+    { "text": "<strong>Training:</strong> The first draft of the support team's guide is ready to review.", "type": "FYI" }
+  ],
+  "upcomingGoals": [
+    { "text": "<strong>Security review:</strong> Fix or agree a plan for the two issues it found.", "type": "FYI" },
+    { "text": "<strong>Load test:</strong> Check the portal copes with two thousand customers signed in at once.", "type": "FYI" },
+    { "text": "<strong>Way back:</strong> Practise returning to the old site on the test site.", "type": "FYI" },
+    { "text": "<strong>Pilot:</strong> Send the invitations once the load test passes.", "type": "FYI" }
+  ],
+  "peopleAndProcess": [
+    { "text": "<strong>Pilot go-ahead:</strong> The steering group to approve the pilot at its next meeting.", "type": "APPROVAL" },
+    { "text": "<strong>Contact centre:</strong> Free up four staff for half a day of training before the pilot.", "type": "ASK" },
+    { "text": "<strong>Holidays:</strong> The lead tester is away next week, and cover is arranged.", "type": "FYI" }
+  ],
+  "technology": [
+    { "text": "<strong>Security team:</strong> Tell us which of the two issues must be fixed before the pilot.", "type": "ASK" },
+    { "text": "<strong>New features:</strong> None go in once the pilot starts: only bug fixes from then on.", "type": "DIRECTIVE" },
+    { "text": "<strong>Email:</strong> Sending limits are raised ahead of the pilot invitations.", "type": "FYI" }
+  ],
+  "draft": false
+}

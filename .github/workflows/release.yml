@@ -1,0 +1,78 @@
+# Runs the tests and builds the package on every push to main and every pull
+# request, then installs and starts it. A tag like v0.1.0 also publishes what the
+# installers download.
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Check the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm ci
+      - run: npm run test:server
+      - run: CI=true npm test -- --watchAll=false
+      - run: npx tsc --noEmit -p .
+      - run: npx eslint --ext .ts,.tsx src
+      - run: sh scripts/package-release.sh
+      - name: Install the package, start it and remove it
+        run: |
+          repo=$PWD
+          export HOME="$(mktemp -d)"
+          PULSE_DOWNLOAD_URL="file://$repo/dist" PULSE_NO_MODIFY_PATH=1 sh install.sh
+          pulse="$HOME/.local/bin/pulse"
+          "$pulse" version
+          "$pulse" --no-open --port 4070 &
+          pid=$!
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            curl -fsS http://localhost:4070/healthz && break
+            sleep 1
+          done
+          curl -fsS http://localhost:4070/ | grep -q '<title>Pulse</title>'
+          curl -fsS http://localhost:4070/api/projects | grep -q 'acme-customer-portal'
+          kill "$pid"
+          "$pulse" sample --remove
+          "$pulse" uninstall
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          dist/open-project-pulse.tar.gz dist/open-project-pulse.tar.gz.sha256
+          --verify-tag --generate-notes

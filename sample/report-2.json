@@ -1,0 +1,23 @@
+{
+  "reportDate": "2026-03-19",
+  "nextReportDate": "2026-03-26",
+  "status": "on-track",
+  "locked": true,
+  "accomplishments": [
+    { "text": "<strong>Orders:</strong> The first version of the order history page is on the test site.", "type": "FYI" },
+    { "text": "<strong>Accounts:</strong> Customers can update their contact details.", "type": "FYI" },
+    { "text": "<strong>Payments:</strong> The test account has been requested from the payment provider.", "type": "FYI" }
+  ],
+  "upcomingGoals": [
+    { "text": "<strong>Invoices:</strong> Build the invoice list and download.", "type": "FYI" },
+    { "text": "<strong>Orders:</strong> Add search to the order history.", "type": "FYI" },
+    { "text": "<strong>Pilot:</strong> Draft the plan for choosing pilot customers.", "type": "FYI" }
+  ],
+  "peopleAndProcess": [
+    { "text": "<strong>Contact centre:</strong> Name two team leads to review the support request form.", "type": "ASK" }
+  ],
+  "technology": [
+    { "text": "<strong>Payment provider:</strong> They expect to send the test account next week.", "type": "FYI" }
+  ],
+  "draft": false
+}

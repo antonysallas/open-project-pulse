@@ -1,0 +1,25 @@
+{
+  "reportDate": "2026-04-02",
+  "nextReportDate": "2026-04-09",
+  "status": "delayed",
+  "statusReason": "<strong>Billing is a week behind:</strong> The payment test account still hasn't arrived. The launch date holds if it comes within a week.",
+  "locked": true,
+  "accomplishments": [
+    { "text": "<strong>Support form:</strong> The team leads' changes are done and the form is on the test site.", "type": "FYI" },
+    { "text": "<strong>Pilot:</strong> The way of choosing pilot customers is agreed.", "type": "FYI" },
+    { "text": "<strong>Billing:</strong> The screens are built against a stand-in for the provider.", "type": "FYI" }
+  ],
+  "upcomingGoals": [
+    { "text": "<strong>Billing:</strong> Connect to the real provider once the account arrives.", "type": "FYI" },
+    { "text": "<strong>Support requests:</strong> Send new requests to the contact centre's queue.", "type": "FYI" },
+    { "text": "<strong>Training:</strong> Start the guide for the support team.", "type": "FYI" }
+  ],
+  "peopleAndProcess": [
+    { "text": "<strong>Extra tester:</strong> Approve a second tester for four weeks to win back the lost time.", "type": "APPROVAL" },
+    { "text": "<strong>Sales:</strong> The list of possible pilot customers is due next week.", "type": "FYI" }
+  ],
+  "technology": [
+    { "text": "<strong>Payment provider:</strong> A senior contact needs to call them this week.", "type": "ASK" }
+  ],
+  "draft": false
+}

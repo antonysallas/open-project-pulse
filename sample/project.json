@@ -1,0 +1,25 @@
+{
+  "id": "acme-customer-portal",
+  "name": "Customer Portal Launch",
+  "description": "Made-up data to show how Pulse looks. Nothing here is real. Remove it with: pulse sample --remove",
+  "customer": "Acme Inc. (sample data)",
+  "teamName": "Digital Delivery",
+  "status": "in-progress",
+  "startDate": "2026-01-05",
+  "endDate": "2026-06-26",
+  "deliveryModel": "milestone",
+  "sprintDuration": 2,
+  "phases": [
+    { "name": "Discovery", "startDate": "2026-01-05", "endDate": "2026-01-23" },
+    { "name": "Design", "startDate": "2026-01-19", "endDate": "2026-02-20" },
+    { "name": "Build", "startDate": "2026-02-09", "endDate": "2026-04-24" },
+    { "name": "Testing and pilot", "startDate": "2026-04-13", "endDate": "2026-05-29" },
+    { "name": "Launch and handover", "startDate": "2026-06-01", "endDate": "2026-06-26" }
+  ],
+  "projectGoals": [
+    "<strong>Self-service</strong> — Customers can check orders, pay invoices and raise support requests online, without calling the contact centre.",
+    "<strong>Fewer support calls</strong> — Routine calls to the contact centre fall by a quarter within three months of launch.",
+    "<strong>A safe launch</strong> — A pilot with a small group of customers comes first, with a tested way back if something goes wrong.",
+    "<strong>Ready teams</strong> — Support and sales staff are trained before any customer is invited."
+  ]
+}

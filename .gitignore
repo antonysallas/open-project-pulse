@@ -1,0 +1,119 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+/dist
+
+# misc
+.DS_Store
+*.swp
+*~
+*.bak
+*.orig
+*.rej
+.idea/
+.vscode/
+logs/
+*.log
+/tmp/
+
+# Secrets and credentials
+.env
+.env.*
+.secrets.env
+.envrc
+.envrc.*
+secrets.*
+credentials*.json
+client_secret*.json
+token.json
+id_rsa*
+id_ed25519*
+*.pem
+*.p12
+*.pfx
+*.kdbx
+*.gpg
+*.asc
+
+# Captured traffic and databases hold real requests and real records.
+*.har
+*.pcap
+*.pcapng
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql
+
+# Real project content must never be committed: reports, logos, exports,
+# spreadsheets, mail, archives, recordings and design files. To add an image to
+# the docs on purpose, list it by name at the end of this file.
+/data/
+/public/data/
+/public/brand/
+/reports/
+/exports/
+/backups/
+*.pdf
+*.ppt
+*.pptx
+*.odp
+*.doc
+*.docx
+*.odt
+*.xls
+*.xlsx
+*.xlsm
+*.ods
+*.csv
+*.tsv
+*.eml
+*.msg
+*.mbox
+*.ics
+*.key
+*.zip
+*.tar
+*.gz
+*.tgz
+*.7z
+*.rar
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.svg
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.heic
+*.mp3
+*.m4a
+*.wav
+*.mp4
+*.mov
+*.webm
+*.fig
+*.sketch
+*.xd
+*.psd
+*.ai
+
+# The only images that belong here, each listed by name: the made-up sample's
+# logo, and screenshots that show nothing but the sample project.
+!/sample/org-logo.svg
+!/docs/images/projects.png
+!/docs/images/project.png
+!/docs/images/editor.png
+!/docs/images/report-page-1.png
+!/docs/images/report-page-2.png

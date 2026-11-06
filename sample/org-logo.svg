@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="80" viewBox="0 0 320 80" role="img" aria-label="Acme Inc.">
+  <title>Acme Inc.</title>
+  <!-- A made-up logo for the sample project, drawn from plain shapes with no font. -->
+  <rect x="2" y="2" width="76" height="76" rx="16" fill="#0f4c5c"/>
+  <path d="M12 62 34 20 56 62Z" fill="#ffffff"/>
+  <path d="M40 62 53 38 68 62Z" fill="#6fd3c7"/>
+  <g fill="none" stroke="#0f4c5c" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M94 58 110 19 126 58M100 45H120"/>
+    <path d="M155 35.200A13 13 0 1 0 155 50.800"/>
+    <path d="M167 32V58M167 42A8.500 8.500 0 0 1 184 42V58M184 42A8.500 8.500 0 0 1 201 42V58"/>
+    <path d="M211 43H237A13 13 0 1 0 233.200 52.200"/>
+  </g>
+  <g fill="none" stroke="#3f7482" stroke-width="5" stroke-linecap="round">
+    <path d="M254 24V58"/>
+    <path d="M265 36V58M265 44A7.500 7.500 0 0 1 280 44V58"/>
+    <path d="M303 39.500A10.500 10.500 0 1 0 303 54.500"/>
+  </g>
+  <circle cx="313" cy="55.500" r="3.500" fill="#3f7482"/>
+</svg>
