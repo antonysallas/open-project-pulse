@@ -226,8 +226,18 @@ add_to_profile() { # SHELL_NAME
     zsh) add_line "${ZDOTDIR:-$HOME}/.zshrc" "$line" ;;
     bash)
       add_line "$HOME/.bashrc" "$line"
-      # Terminal windows on macOS start login shells, which skip .bashrc.
-      [ "$(uname -s)" != Darwin ] || add_line "$HOME/.bash_profile" "$line"
+      # Terminal windows on macOS start login shells, which skip .bashrc and read
+      # only the first of these that exists, so a new .bash_profile would hide
+      # the others.
+      if [ "$(uname -s)" = Darwin ]; then
+        for file in .bash_profile .bash_login .profile; do
+          [ ! -f "$HOME/$file" ] || {
+            add_line "$HOME/$file" "$line"
+            return
+          }
+        done
+        add_line "$HOME/.bash_profile" "$line"
+      fi
       ;;
     fish)
       add_line "${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d/open-project-pulse.fish" "fish_add_path \"$BIN_DIR\""

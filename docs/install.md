@@ -28,11 +28,13 @@ On macOS and Linux:
 If the folder holding the command isn't on your `PATH`, it adds it: to your user
 `PATH` on Windows, or elsewhere with one line in your login shell's profile, and
 in the profile of the shell you ran the installer from if that's a different
-one: `~/.zshrc`, `~/.bashrc` (and `~/.bash_profile` on macOS), a file in fish's
-`conf.d` folder, or `~/.profile`. A terminal that's already open can't see that
-change, so on macOS and Linux the installer ends by printing the command's full
-path to use there. `pulse uninstall` leaves the line in place: it does no harm,
-and you can delete it.
+one: `~/.zshrc`, `~/.bashrc`, a file in fish's `conf.d` folder, or `~/.profile`.
+For bash on macOS it also goes in the first of `~/.bash_profile`,
+`~/.bash_login` and `~/.profile` that exists, or a new `~/.bash_profile` if none
+do. A terminal that's already open can't see that change, so on macOS and Linux
+the installer ends by printing the command's full path to use there.
+`pulse uninstall` leaves the line in place: it does no harm, and you can delete
+it.
 
 If the data folder is empty, as on a first install, the installer adds
 [the sample project](../README.md#try-the-sample-project).
