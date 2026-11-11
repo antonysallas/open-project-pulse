@@ -7,6 +7,8 @@ import {
 } from './report';
 import { isRichEmpty, leadHtml, richHtml, richPlain } from './rich';
 import { href, parseRoute } from './route';
+import { sizedSvg } from './logo';
+import { actionItems, cleanExport, parseExport, projectFileName, reportFileName } from './exchange';
 
 describe('dates', () => {
   test('format and count days', () => {
@@ -184,10 +186,11 @@ describe('projects', () => {
 
   test('the form becomes the stored shape', () => {
     const body = toStoredProject({
-      id: 'x', name: ' X ', team: 'T', customer: 'C', logo: '', logoName: '', start: '2031-04-07', end: '2031-05-04',
+      id: 'x', name: ' X ', team: 'T', customer: 'C', logo: '', logoName: '', companyLogo: 'data:image/png;base64,AA==', companyLogoName: 'us.png', start: '2031-04-07', end: '2031-05-04',
       model: 'milestone', sprintWeeks: 2, periods: [{ name: ' A ', start: '2031-04-07', end: '2031-05-04' }, { name: 'B', start: '', end: '' }], goals: [' g ', ''],
     });
     expect(body).toMatchObject({ name: 'X', teamName: 'T', deliveryModel: 'milestone', phases: [{ name: 'A', startDate: '2031-04-07', endDate: '2031-05-04' }], projectGoals: ['g'] });
+    expect(body).toMatchObject({ companyLogo: 'data:image/png;base64,AA==', companyLogoName: 'us.png' });
     expect(body.sprints).toBeUndefined();
   });
 });
@@ -362,5 +365,71 @@ describe('dates that already have a report', () => {
     expect(freeDate(project, '2027-01-07')).toBe('2027-01-21');
     expect(freeDate(project, '2027-01-28')).toBe('2027-02-04');
     expect(freeDate({ id: 'demo', reports: [] }, '2027-01-07')).toBe('2027-01-07');
+  });
+});
+
+describe('.json export and import', () => {
+  const project = {
+    id: 'harbour-move', name: 'Harbour Move', startDate: '2031-04-07', endDate: '2031-06-27', deliveryModel: 'milestone',
+    phases: [{ name: 'Plan', startDate: '2031-04-07', endDate: '2031-06-27' }], projectGoals: ['<b onclick="x()">Move</b> it'],
+  };
+  const report = {
+    reportDate: '2031-05-16', status: 'at-risk', statusReason: '<img src=x onerror="x()">Late',
+    accomplishments: [{ text: 'Plan: <script>x()</script>signed off', type: 'FYI' }], peopleAndProcess: [{ text: 'Approve', type: 'APPROVAL' }, { text: 'Note', type: 'FYI' }],
+  };
+  const file = (d: unknown): string => JSON.stringify(d);
+  const projectFile = { format: 'pulse-export', version: 1, kind: 'project', exportedAt: '2031-06-01T00:00:00.000Z', project, reports: [report] };
+
+  test('file names', () => {
+    expect(projectFileName('harbour-move', true)).toBe('harbour-move_project.json');
+    expect(projectFileName('harbour-move', false)).toBe('harbour-move_setup.json');
+    expect(reportFileName('harbour-move', '2031-05-16')).toBe('harbour-move_2031-05-16_report.json');
+  });
+
+  test('a file says why it can not be imported', () => {
+    expect(parseExport(file(projectFile), 'a.json').kind).toBe('project');
+    expect(parseExport(file({ format: 'pulse-export', version: 1, kind: 'report', projectId: 'harbour-move', report }), 'r.json').kind).toBe('report');
+    expect(() => parseExport('{"format":"pulse-export",', 'cut.json')).toThrow("cut.json isn't a Pulse export. Choose a .json file exported from Pulse.");
+    expect(() => parseExport(file({ hello: 1 }), 'x.json')).toThrow("x.json isn't a Pulse export.");
+    expect(() => parseExport(file({ ...projectFile, version: 2 }), 'new.json')).toThrow('new.json was made by a newer version of Pulse. Update Pulse, then import it again.');
+    const damaged = 'is incomplete or damaged, so nothing was imported. Export it again from Pulse.';
+    expect(() => parseExport(file({ ...projectFile, reports: undefined }), 'd.json')).toThrow(damaged);
+    expect(() => parseExport(file({ ...projectFile, project: { ...project, startDate: 'soon' } }), 'd.json')).toThrow(damaged);
+    expect(() => parseExport(file({ ...projectFile, reports: [report, report] }), 'd.json')).toThrow(damaged);
+    expect(() => parseExport(file({ ...projectFile, reports: [{ ...report, status: 'fine' }] }), 'd.json')).toThrow(damaged);
+    expect(() => parseExport(file({ ...projectFile, kind: 'report' }), 'd.json')).toThrow(damaged);
+  });
+
+  test('rich text from a file is cleaned as the editor cleans it; plain text stays', () => {
+    const clean = cleanExport(parseExport(file(projectFile), 'a.json'));
+    if (clean.kind !== 'project') throw new Error('not a project');
+    expect(clean.project.projectGoals).toEqual(['<strong>Move</strong> it']);
+    expect(clean.reports[0].statusReason).toBe('Late');
+    expect(clean.reports[0].accomplishments).toEqual([{ text: 'Plan: signed off', type: 'FYI' }]);
+    expect(clean.reports[0].peopleAndProcess).toEqual(report.peopleAndProcess);
+    expect(actionItems(clean.reports[0])).toBe(1);
+  });
+});
+
+describe('logos', () => {
+  // Browsers have these; the test page (jsdom) doesn't.
+  beforeAll(() => {
+    Object.assign(globalThis, { TextEncoder: jest.requireActual('util').TextEncoder, TextDecoder: jest.requireActual('util').TextDecoder });
+  });
+  const svgUrl = (svg: string): string => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+  const tagOf = (url: string | null): string => (Buffer.from((url || '').split(',')[1], 'base64').toString().match(/<svg\b[^>]*>/) || [''])[0];
+
+  test('an SVG without a size gets one from its viewBox, which the PDF needs', () => {
+    expect(tagOf(sizedSvg(svgUrl('<svg id="L" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80"><path d="M0 0"/></svg>'))))
+      .toBe('<svg width="320" height="80" id="L" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80">');
+    expect(tagOf(sizedSvg(svgUrl('<svg width="100%" viewBox="0,0,40,10"/>')))).toBe('<svg width="40" height="10" viewBox="0,0,40,10"/>');
+  });
+
+  test('a sized SVG and any other image stay as they are; an SVG with no size at all is refused', () => {
+    const sized = svgUrl('<svg width="40" height="10px" viewBox="0 0 40 10"/>');
+    expect(sizedSvg(sized)).toBe(sized);
+    expect(sizedSvg('data:image/png;base64,iVBORw0KGgo=')).toBe('data:image/png;base64,iVBORw0KGgo=');
+    expect(sizedSvg(svgUrl('<svg xmlns="http://www.w3.org/2000/svg"/>'))).toBeNull();
+    expect(sizedSvg('data:image/svg+xml;base64,@@@')).toBeNull();
   });
 });

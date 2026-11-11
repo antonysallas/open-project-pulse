@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScreenProps } from '../types/ScreenTypes';
 import AppHeader from '../components/AppHeader';
 import Icon from '../components/Icon';
+import ImportDialog from '../components/ImportDialog';
 import { PhaseBadge, StatusChip, StatusGraph } from '../components/ui';
 import { addDays, dayMonth, dayMonthYear, daysBetween, isoWeek, today, weekdayDate } from '../utils/dates';
 import { currentList, elapsed, periodsAt } from '../utils/project';
@@ -12,7 +13,8 @@ interface ProjectsScreenProps extends ScreenProps {
   filter: 'active' | 'completed';
 }
 
-const ProjectsScreen: React.FC<ProjectsScreenProps> = ({ projects, filter }): JSX.Element => {
+const ProjectsScreen: React.FC<ProjectsScreenProps> = ({ projects, filter, reload, notify }): JSX.Element => {
+  const [importing, setImporting] = useState(false);
   const now = today();
   const active = projects.filter((p) => p.status !== 'completed');
   const completed = projects.filter((p) => p.status === 'completed');
@@ -21,6 +23,10 @@ const ProjectsScreen: React.FC<ProjectsScreenProps> = ({ projects, filter }): JS
   return (
     <>
       <AppHeader crumbs={[{ label: filter === 'completed' ? 'Closed projects' : 'Projects' }]}>
+        <button type="button" className="s-btn" onClick={() => setImporting(true)}>
+          <Icon name="upload" />
+          Import
+        </button>
         <a href={href.newProject()} className="s-btn s-btn--primary">
           <Icon name="plus" />
           New project
@@ -105,6 +111,7 @@ const ProjectsScreen: React.FC<ProjectsScreenProps> = ({ projects, filter }): JS
           )}
         </section>
       </main>
+      {importing && <ImportDialog projects={projects} reload={reload} notify={notify} onClose={() => setImporting(false)} />}
     </>
   );
 };

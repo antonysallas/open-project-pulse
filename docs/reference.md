@@ -10,7 +10,8 @@ data/
 │   ├── YYYYMMDD_<id>_report.json  # a saved report
 │   └── YYYYMMDD_<id>_report.pdf   # its PDF
 ├── brand/org-logo.svg             # the logo on your reports (or .png)
-└── drafts/<key>.json              # an unsaved form (per user with sign-in)
+├── drafts/<key>.json              # an unsaved form (per user with sign-in)
+└── replaced/<id>-<time>/          # what an import replaced, kept
 ```
 
 ## File formats
@@ -39,9 +40,14 @@ A project (`projects/<id>.json`):
   ],
   "projectGoals": ["Customers can pay their invoices online"],
   "logo": "data:image/png;base64,…",
-  "logoName": "acme.png · 12 KB"
+  "logoName": "acme.png · 12 KB",
+  "companyLogo": "data:image/png;base64,…",
+  "companyLogoName": "us.png · 8 KB"
 }
 ```
+
+`logo` is the customer's and `companyLogo` your own organisation's, both
+optional. Without `companyLogo`, reports show `brand/org-logo`.
 
 A phased project has `"deliveryModel": "milestone"` and
 `"phases": [{ "name": "Discovery", "startDate": "…", "endDate": "…" }]` in place
@@ -74,6 +80,27 @@ and `statusReason` are rich text: a small HTML subset (`strong`, `em`, `ul`,
 shown; anything else is dropped. Plain text is escaped, with a "Label:" lead
 shown in bold.
 
+## .json export
+
+**Export** writes one of two files. A project, as `<id>_project.json` (or
+`<id>_setup.json` with no reports):
+
+```json
+{
+  "format": "pulse-export",
+  "version": 1,
+  "kind": "project",
+  "exportedAt": "2031-06-01T09:00:00.000Z",
+  "project": { "id": "…", "name": "…", "logo": "…", "companyLogo": "…" },
+  "reports": [{ "reportDate": "2031-05-16", "status": "on-track" }]
+}
+```
+
+`project` is the project file above and each of `reports` a report file, drafts
+included, without the lock. A report, as `<id>_<date>_report.json`, has
+`"kind": "report"`, `projectId`, `projectName` and `report`. An import checks
+every field, keeps only the ones Pulse stores, and cleans the rich text.
+
 ## Server API
 
 - `GET /api/projects`: every project's details (logo left out) and its saved
@@ -103,6 +130,11 @@ shown in bold.
 - `POST /api/editing/<key>` `{tab, leaving}`: says a form is open, and answers how
   many other tabs have it open. Kept in memory only, with no names.
 - `GET /brand/org-logo`: your organisation's logo, or 204 when there is none
+- `POST /api/import` `{file, mode}`: brings in a .json export (below). A project
+  already in Pulse needs `mode`: `"copy"` (a new `<id>-N`) or `"replace"`. A
+  report goes into its `projectId`, which must exist, replacing the report and
+  PDF on its date unless that report is locked (409). It is all or nothing, and
+  whatever it replaces moves to `replaced/<id>-<time>/`.
 
 A project ID must be listed in `projects.json`, and file names are reduced to
 letters, digits and `._()+-`, so nothing is written outside the data folder. The

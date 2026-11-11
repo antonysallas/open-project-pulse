@@ -76,6 +76,8 @@ test('save a PDF; anything else is refused', async () => {
   assert.deepEqual(await ok.json(), { ok: true, filename: '20310515_demo_report.pdf' });
   const back = await get('/data/reports/demo/20310515_demo_report.pdf');
   assert.equal(back.headers.get('content-type'), 'application/pdf');
+  // Saved under its file name, it downloads under the name Export gives a new one.
+  assert.equal(back.headers.get('content-disposition'), 'inline; filename="Demo_Report_2031-05-15.pdf"');
   const notPdf = Buffer.from('<html>').toString('base64');
   assert.equal((await post('/api/reports/demo/pdf', { filename: 'x.pdf', base64: notPdf })).status, 400);
   assert.equal((await post('/api/reports/demo/pdf', { filename: 'x.exe', base64: pdf })).status, 400);
@@ -623,4 +625,149 @@ test('with an address set, a POST from any other site is refused', async (t) => 
   assert.equal((await write('/api/editing/some-form', tab, 'test-user', { Origin: 'https://pulse.example.com' })).status, 200);
   assert.equal((await write('/api/editing/some-form', tab, 'test-user', { Origin: 'https://evil.example' })).status, 403);
   assert.equal((await read('/', 'test-user')).status, 200); // whatever Host the proxy passes on
+});
+
+// .json export and import (src/utils/exchange.ts makes the files).
+const IMPORT_PNG = 'data:image/png;base64,iVBORw0KGgo=';
+const exported = (over = {}, reports = []) => ({
+  format: 'pulse-export',
+  version: 1,
+  kind: 'project',
+  exportedAt: '2031-06-01T09:00:00.000Z',
+  project: {
+    id: 'harbour-move', name: 'Harbour Move', customer: 'Example Ltd', teamName: 'Platform', status: 'in-progress',
+    startDate: '2031-04-07', endDate: '2031-06-27', deliveryModel: 'milestone',
+    phases: [{ name: 'Plan', startDate: '2031-04-07', endDate: '2031-04-30' }, { name: 'Move', startDate: '2031-05-01', endDate: '2031-06-27' }],
+    projectGoals: ['<strong>Move</strong> every service'], logo: IMPORT_PNG, logoName: 'customer.png', companyLogo: IMPORT_PNG, companyLogoName: 'us.png',
+    ...over,
+  },
+  reports,
+});
+const importedReport = (date, over = {}) => ({
+  reportDate: date, nextReportDate: '2031-05-23', status: 'at-risk', statusReason: 'Waiting on <em>firewall</em> changes',
+  accomplishments: [{ text: 'Plan signed off', type: 'FYI' }], upcomingGoals: [], peopleAndProcess: [{ text: 'Approve the window', type: 'APPROVAL' }],
+  technology: [], draft: false, locked: true, lockedAt: '2031-05-17T00:00:00.000Z', ...over,
+});
+const reportFile = (projectId, report, projectName = 'Harbour Move') => ({
+  format: 'pulse-export', version: 1, kind: 'report', exportedAt: '2031-06-01T09:00:00.000Z', projectId, projectName, report,
+});
+
+async function importServer(t) {
+  const local = await localServer(t);
+  const send = (body) => fetch(`${local.url}/api/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const read = (p) => JSON.parse(fs.readFileSync(path.join(local.dataDir, p), 'utf8'));
+  const list = () => (fs.existsSync(path.join(local.dataDir, 'projects.json')) ? read('projects.json').projects : []).map((p) => p.id);
+  return { ...local, send, read, list };
+}
+
+test('a project file comes in with its logos, reports and drafts, lock left behind', async (t) => {
+  const { send, read, list, url } = await importServer(t);
+  const res = await send({ file: exported({}, [importedReport('2031-05-16'), importedReport('2031-05-23', { draft: true, locked: false })]) });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true, id: 'harbour-move', name: 'Harbour Move', reports: 2 });
+  assert.deepEqual(list(), ['harbour-move']);
+  const details = read('projects/harbour-move.json');
+  assert.equal(details.companyLogo, IMPORT_PNG);
+  assert.equal(details.companyLogoName, 'us.png');
+  assert.equal(details.logo, IMPORT_PNG);
+  const report = read('reports/harbour-move/20310516_harbour-move_report.json');
+  assert.equal(report.locked, undefined);
+  assert.equal(report.lockedAt, undefined);
+  assert.equal(report.statusReason, 'Waiting on <em>firewall</em> changes');
+  assert.equal(read('reports/harbour-move/20310523_harbour-move_report.json').draft, true);
+  const listed = (await (await fetch(`${url}/api/projects`)).json()).projects[0];
+  assert.equal(listed.hasCompanyLogo, true);
+  assert.equal(listed.companyLogo, undefined);
+  assert.equal(listed.reports.length, 2);
+});
+
+test('a project already in Pulse is kept as a copy, or replaced with the old one put aside', async (t) => {
+  const { send, read, list, dataDir } = await importServer(t);
+  await send({ file: exported({}, [importedReport('2031-05-16')]) });
+  fs.writeFileSync(path.join(dataDir, 'reports', 'harbour-move', '20310516_harbour-move_report.pdf'), '%PDF-1.4 old');
+
+  const asked = await send({ file: exported() });
+  assert.equal(asked.status, 409);
+  assert.match((await asked.json()).error, /Keep both or Replace existing/);
+
+  const copy = await (await send({ file: exported({}, [importedReport('2031-05-16')]), mode: 'copy' })).json();
+  assert.deepEqual([copy.id, copy.name], ['harbour-move-2', 'Harbour Move (2)']);
+  assert.equal((await (await send({ file: exported(), mode: 'copy' })).json()).id, 'harbour-move-3');
+  assert.deepEqual(list(), ['harbour-move', 'harbour-move-2', 'harbour-move-3']);
+  assert.equal(read('reports/harbour-move-2/20310516_harbour-move-2_report.json').status, 'at-risk');
+  assert.equal(read('projects/harbour-move.json').name, 'Harbour Move'); // the original is untouched
+
+  const replaced = await send({ file: exported({ name: 'Harbour Move v2', companyLogo: '' }, [importedReport('2031-05-30', { status: 'on-track' })]), mode: 'replace' });
+  assert.equal(replaced.status, 200);
+  assert.deepEqual(fs.readdirSync(path.join(dataDir, 'reports', 'harbour-move')), ['20310530_harbour-move_report.json']);
+  assert.equal(read('projects/harbour-move.json').name, 'Harbour Move v2');
+  assert.equal(read('projects/harbour-move.json').companyLogo, undefined);
+  assert.equal(read('projects.json').projects[0].name, 'Harbour Move v2');
+  const [aside] = fs.readdirSync(path.join(dataDir, 'replaced'));
+  assert.match(aside, /^harbour-move-\d{4}-/);
+  assert.deepEqual(fs.readdirSync(path.join(dataDir, 'replaced', aside, 'reports')).sort(), ['20310516_harbour-move_report.json', '20310516_harbour-move_report.pdf']);
+  assert.equal(read(`replaced/${aside}/harbour-move.json`).name, 'Harbour Move');
+});
+
+test('a report file goes into its own project, replacing that date and putting the old one aside', async (t) => {
+  const { send, read, dataDir } = await importServer(t);
+  const missing = await send({ file: reportFile('harbour-move', importedReport('2031-05-16')) });
+  assert.equal(missing.status, 404);
+  assert.match((await missing.json()).error, /belongs to 'Harbour Move', which isn't in Pulse/);
+
+  await send({ file: exported({}, [importedReport('2031-05-16', { locked: false })]) });
+  const dir = path.join(dataDir, 'reports', 'harbour-move');
+  fs.writeFileSync(path.join(dir, '20310516_harbour-move_report.pdf'), '%PDF-1.4 old');
+  const damaged = await send({ file: reportFile('harbour-move', { reportDate: 'soon' }) });
+  assert.equal(damaged.status, 400);
+  assert.match((await damaged.json()).error, /incomplete or damaged/);
+  const added = await send({ file: reportFile('harbour-move', importedReport('2031-05-23')) });
+  assert.deepEqual(await added.json(), { ok: true, id: 'harbour-move', filename: '20310523_harbour-move_report.json', replaced: false });
+
+  const res = await send({ file: reportFile('harbour-move', importedReport('2031-05-16', { status: 'delayed' })) });
+  assert.equal((await res.json()).replaced, true);
+  assert.equal(read('reports/harbour-move/20310516_harbour-move_report.json').status, 'delayed');
+  assert.equal(fs.existsSync(path.join(dir, '20310516_harbour-move_report.pdf')), false); // it showed the old report
+  const [aside] = fs.readdirSync(path.join(dataDir, 'replaced'));
+  assert.deepEqual(fs.readdirSync(path.join(dataDir, 'replaced', aside)).sort(), ['20310516_harbour-move_report.json', '20310516_harbour-move_report.pdf']);
+
+  // A locked report stays as it is.
+  const locked = read('reports/harbour-move/20310516_harbour-move_report.json');
+  fs.writeFileSync(path.join(dir, '20310516_harbour-move_report.json'), JSON.stringify({ ...locked, locked: true }));
+  const refused = await send({ file: reportFile('harbour-move', importedReport('2031-05-16', { status: 'on-track' })) });
+  assert.equal(refused.status, 409);
+  assert.equal(read('reports/harbour-move/20310516_harbour-move_report.json').status, 'delayed');
+});
+
+test('a file that is not a whole Pulse export changes nothing', async (t) => {
+  const { send, list, dataDir } = await importServer(t);
+  const refused = async (body, pattern) => {
+    const res = await send(body);
+    assert.equal(res.status, 400, JSON.stringify(body).slice(0, 80));
+    assert.match((await res.json()).error, pattern);
+  };
+  await refused({ file: { hello: 'world' } }, /isn't a Pulse export/);
+  await refused({ file: { ...exported(), version: 2 } }, /newer version of Pulse/);
+  await refused({ file: { ...exported(), kind: 'other' } }, /incomplete or damaged/);
+  await refused({ file: exported({ id: '../escape' }) }, /incomplete or damaged/);
+  await refused({ file: exported({ endDate: '2031-01-01' }) }, /incomplete or damaged/);
+  await refused({ file: exported({ companyLogo: 'data:text/html;base64,PHA+' }) }, /company logo/);
+  await refused({ file: exported({}, [importedReport('2031-05-16'), importedReport('2031-05-16')]) }, /two reports for 2031-05-16/);
+  await refused({ file: exported({}, [importedReport('2031-05-16'), importedReport('2031-05-23', { status: 'fine' })]) }, /2031-05-23 report has no status/);
+  await refused({ file: exported({}, [importedReport('2031-05-16', { technology: [{ text: 'x', type: 'URGENT' }] })]) }, /damaged list/);
+  await refused({ file: reportFile('../harbour-move', importedReport('2031-05-16')) }, /incomplete or damaged/);
+  assert.deepEqual(list(), []);
+  assert.equal(fs.existsSync(path.join(dataDir, 'reports')), false);
+});
+
+test('a company logo is kept like the customer logo, and must be an image', () => {
+  const base = {
+    name: 'Example', startDate: '2031-04-07', endDate: '2031-06-27', deliveryModel: 'milestone',
+    phases: [{ name: 'Plan', startDate: '2031-04-07', endDate: '2031-06-27' }],
+  };
+  const { project } = cleanProject({ ...base, companyLogo: IMPORT_PNG, companyLogoName: 'us.png' }, 'example');
+  assert.equal(project.companyLogo, IMPORT_PNG);
+  assert.equal(project.companyLogoName, 'us.png');
+  assert.equal(cleanProject(base, 'example').project.companyLogo, undefined);
+  assert.match(cleanProject({ ...base, companyLogo: 'https://example.com/x.png' }, 'example').error, /company logo/);
 });

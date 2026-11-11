@@ -83,6 +83,8 @@ A two-page report for stakeholders, to export as a PDF or as slides:
 - **Stakeholder actions:** items typed Ask, Approval, Directive or FYI, counted
   on the report.
 - **Export:** PDF and PowerPoint.
+- **Move or back up:** export a project with its reports, or one report, as a
+  .json file, and import it into another Pulse.
 - **Drafts:** a report is kept as you type, so a closed tab loses nothing.
 - **Lock:** once you have presented a report, lock it so that it can't change.
 
@@ -100,6 +102,9 @@ Use an SVG (with `width` and `height` on its `<svg>` tag) or a PNG, then reload
 the page. It shows in the footer of every report, next to the customer's logo,
 which you add to each project in its form. Check that you are allowed to use a
 logo before you add it.
+
+A project can also have a company logo of its own, set in its form under
+**Company logo**. Its reports then show that one in place of the logo above.
 
 ## Commands
 

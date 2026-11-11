@@ -3,12 +3,13 @@ import { StoredReport } from '../types/ReportTypes';
 import { ScreenProps } from '../types/ScreenTypes';
 import AppHeader from '../components/AppHeader';
 import ConfirmDialog from '../components/ConfirmDialog';
-import ExportMenu, { ExportFormat } from '../components/ExportMenu';
+import ExportMenu, { ExportFormat, JSON_TONE, MenuChoice, REPORT_FORMATS } from '../components/ExportMenu';
 import Icon from '../components/Icon';
 import { ActionGroups, Legend, NumberedRich, ReportHead, StatStrip, TimelineCard } from '../components/ReportParts';
 import { InkCard, LabelChip, Rich, WhyBanner } from '../components/ui';
 import { downloadBlob, pptxName, useReportExport } from '../pdf/useExport';
 import { fetchReport, lockReport, reportUrl } from '../utils/api';
+import { downloadJson, exportReport, reportFileName } from '../utils/exchange';
 import { dayMonth, dayMonthYear, isoDate, isoWeek } from '../utils/dates';
 import { useLogo, useOrgLogo } from '../utils/logo';
 import { currentList } from '../utils/project';
@@ -16,6 +17,11 @@ import { actionCounts, downloadName, draftFromStored, recentHistory, reportPerio
 import { isRichEmpty } from '../utils/rich';
 import { go, href } from '../utils/route';
 import { NotFound } from './ProjectScreen';
+
+const FORMATS: MenuChoice<ExportFormat | 'json'>[] = [
+  ...REPORT_FORMATS,
+  { key: 'json', label: 'Pulse data (.json)', desc: 'This report only · import it into Pulse elsewhere', abbr: 'JSON', tone: JSON_TONE },
+];
 
 interface ReportViewScreenProps extends ScreenProps {
   id: string;
@@ -27,7 +33,7 @@ interface ReportViewScreenProps extends ScreenProps {
 const ReportViewScreen: React.FC<ReportViewScreenProps> = ({ projects, id, file, reload, notify }): JSX.Element => {
   const p = projects.find((x) => x.id === id);
   const logo = useLogo(p);
-  const orgLogo = useOrgLogo();
+  const orgLogo = useOrgLogo(p);
   const [report, setReport] = useState<StoredReport | null>(null);
   const [loadError, setLoadError] = useState('');
   const [exporting, setExporting] = useState(false);
@@ -113,7 +119,20 @@ const ReportViewScreen: React.FC<ReportViewScreenProps> = ({ projects, id, file,
     }
   };
 
-  const exportAs = async (format: ExportFormat): Promise<void> => {
+  const exportAs = async (format: ExportFormat | 'json'): Promise<void> => {
+    if (format === 'json') {
+      setExporting(true);
+      try {
+        const name = reportFileName(p.id, d.date);
+        downloadJson(name, await exportReport(p, file));
+        notify(`${name} downloaded`);
+      } catch (err) {
+        notify((err as Error).message, 'danger');
+      } finally {
+        setExporting(false);
+      }
+      return;
+    }
     if (format === 'pdf' && summary && summary.pdf) {
       window.open(reportUrl(p.id, summary.pdf), '_blank', 'noopener');
       return;
@@ -146,7 +165,7 @@ const ReportViewScreen: React.FC<ReportViewScreenProps> = ({ projects, id, file,
             Edit report
           </a>
         )}
-        <ExportMenu label={exporting ? 'Preparing…' : 'Export'} heading="Export this report as" disabled={exporting} onPick={exportAs} />
+        <ExportMenu label={exporting ? 'Preparing…' : 'Export'} heading="Export this report as" items={FORMATS} disabled={exporting} onPick={exportAs} />
       </AppHeader>
 
       <main className="pulse-main" style={{ paddingTop: 24 }}>

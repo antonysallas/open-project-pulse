@@ -64,6 +64,7 @@ export function normalizeProject(raw: StoredProject): Project {
     goals: (raw.projectGoals || []).filter((g) => typeof g === 'string' && g.trim()),
     status: raw.status === 'completed' ? 'completed' : 'in-progress',
     hasLogo: !!raw.hasLogo || !!raw.logo,
+    hasCompanyLogo: !!raw.hasCompanyLogo || !!raw.companyLogo,
     reports: (raw.reports || []).filter((r) => r && typeof r.json === 'string'),
   };
 }
@@ -191,6 +192,8 @@ export interface ProjectFormData {
   customer: string;
   logo: string;
   logoName: string;
+  companyLogo: string;
+  companyLogoName: string;
   start: string;
   end: string;
   model: DeliveryModel;
@@ -223,5 +226,7 @@ export function toStoredProject(f: ProjectFormData): StoredProject {
     projectGoals: f.goals.map((g) => g.trim()).filter(Boolean),
     logo: f.logo,
     logoName: f.logoName,
+    companyLogo: f.companyLogo,
+    companyLogoName: f.companyLogoName,
   };
 }

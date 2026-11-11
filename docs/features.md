@@ -17,8 +17,11 @@
 - **Lock:** once a report has been presented, **Lock report** freezes it: no
   more edits, and the server refuses saves to it or its PDF. It can still be
   exported. **Unlock** (with a confirmation) reopens it.
-- **Project form:** name, team, customer and logo, dates, then phases or
-  sprints. The project's ID (its folder and file names) comes from the name.
+- **Project form:** name, team, customer, dates, then phases or sprints. Two
+  optional logos (PNG, SVG, JPEG or WebP, up to 1 MB each): **Company logo**,
+  your own organisation's for this project, which takes the place of the one
+  set with `pulse logo` in its reports' footers; and **Customer logo**, beside
+  it. The project's ID (its folder and file names) comes from the name.
   Phases can overlap: a phase that runs alongside another sits on its own row of
   the timeline, in the form's preview and in the report. A name too long for its
   bar goes beside it, never over another bar.
@@ -57,6 +60,17 @@
   server. The PowerPoint file has two 16:9 slides of native shapes and text laid
   out like the PDF. To use it in Google Slides, upload it to Google Drive and
   open it there.
+- **.json export and import:** **Export** on a project page saves the project
+  as a .json file, with its reports and drafts or just its setup; **JSON** on a
+  report row and **Pulse data (.json)** in a report's **Export** menu save one
+  report. Logos travel inside the file. **Import** on the Projects page and
+  **Import report** on a project page read a file and show what it holds before
+  anything changes. A project already in Pulse can come in as a copy (**Keep
+  both**: `<id>-2`, "Name (2)") or replace it (**Replace existing**). A report
+  goes into the project it came from, replacing a report or draft on the same
+  date, and waits until that project is in Pulse; a locked report is never
+  replaced. Whatever an import replaces is kept in `data/replaced/`. Saved PDFs
+  and the lock stay behind: export a PDF again from the imported report.
 - **PDF:** two A4 landscape pages. Page 1: status and why, key numbers, the
   status of the last eight weeks, the timeline and the objectives. Page 2: the
   week's work, items that need stakeholder action by type, and the legend. Long

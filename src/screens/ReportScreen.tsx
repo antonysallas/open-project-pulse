@@ -3,7 +3,7 @@ import { EditItem, ListKey, ReportDraft } from '../types/ReportTypes';
 import { ScreenProps } from '../types/ScreenTypes';
 import AppHeader from '../components/AppHeader';
 import ConfirmDialog from '../components/ConfirmDialog';
-import ExportMenu, { ExportFormat } from '../components/ExportMenu';
+import ExportMenu, { ExportFormat, REPORT_FORMATS } from '../components/ExportMenu';
 import Icon from '../components/Icon';
 import { ItemList, TypedList } from '../components/ItemsEditor';
 import { Legend, NumberedRich, ReportHead } from '../components/ReportParts';
@@ -35,7 +35,7 @@ const rekey = (items: EditItem[] | undefined): EditItem[] => (Array.isArray(item
 const ReportScreen: React.FC<ReportScreenProps> = ({ projects, id, file, copy, reload, notify }): JSX.Element => {
   const p = projects.find((x) => x.id === id);
   const logo = useLogo(p);
-  const orgLogo = useOrgLogo();
+  const orgLogo = useOrgLogo(p);
   const base = useRef<ReportDraft | null>(null); // as opened, before any change
   // A new report is for the week after the latest submitted one.
   const latest = p ? submitted(p)[0] : undefined;
@@ -275,7 +275,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ projects, id, file, copy, r
       </button>
       {cancelButton(' pulse-hide-sm')}
       {saveButton}
-      <ExportMenu label={saving === 'export' ? 'Exporting…' : 'Save and export'} heading="Save the report, then export as" disabled={!!saving || !!taken} onPick={saveAndExport} />
+      <ExportMenu label={saving === 'export' ? 'Exporting…' : 'Save and export'} heading="Save the report, then export as" items={REPORT_FORMATS} disabled={!!saving || !!taken} onPick={saveAndExport} />
     </>
   );
 
@@ -483,7 +483,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ projects, id, file, copy, r
             <div style={{ display: 'flex', gap: 8 }}>
               {cancelButton()}
               {saveButton}
-              <ExportMenu label={saving === 'export' ? 'Exporting…' : 'Save and export'} heading="Save the report, then export as" disabled={!!saving || !!taken} onPick={saveAndExport} up />
+              <ExportMenu label={saving === 'export' ? 'Exporting…' : 'Save and export'} heading="Save the report, then export as" items={REPORT_FORMATS} disabled={!!saving || !!taken} onPick={saveAndExport} up />
             </div>
           </div>
         </main>

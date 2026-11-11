@@ -1,6 +1,7 @@
 import React from 'react';
 import {
-  Bold, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, FilePlus, ImageUp, Italic, List, Lock, LockOpen, LucideIcon, Pencil, Plus, RefreshCw, X,
+  Bold, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Download, Eye, FileBraces, FilePlus, ImageUp, Italic, List, Lock, LockOpen, LucideIcon, Pencil, Plus, RefreshCw,
+  TriangleAlert, Upload, X,
 } from 'lucide-react';
 
 const ICONS: Record<string, LucideIcon> = {
@@ -10,7 +11,9 @@ const ICONS: Record<string, LucideIcon> = {
   'chevron-left': ChevronLeft,
   'chevron-right': ChevronRight,
   copy: Copy,
+  download: Download,
   eye: Eye,
+  'file-json': FileBraces,
   'file-plus': FilePlus,
   'image-up': ImageUp,
   italic: Italic,
@@ -20,6 +23,8 @@ const ICONS: Record<string, LucideIcon> = {
   pencil: Pencil,
   plus: Plus,
   'refresh-cw': RefreshCw,
+  'triangle-alert': TriangleAlert,
+  upload: Upload,
   x: X,
 };
 

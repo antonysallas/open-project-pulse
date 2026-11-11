@@ -3,11 +3,14 @@ import { ItemType } from '../types/ReportTypes';
 import { ScreenProps } from '../types/ScreenTypes';
 import AppHeader from '../components/AppHeader';
 import ConfirmDialog from '../components/ConfirmDialog';
+import ExportMenu, { JSON_TONE } from '../components/ExportMenu';
 import Icon from '../components/Icon';
+import ImportDialog from '../components/ImportDialog';
 import { NumberedRich, ReportHead, StatStrip, TimelineCard } from '../components/ReportParts';
 import { InkCard, LabelChip, Rich, StatusChip, WhyBanner } from '../components/ui';
 import { reportUrl, updateProject } from '../utils/api';
 import { addDays, dayMonth, dayMonthYear, daysBetween, isoWeek, today } from '../utils/dates';
+import { downloadJson, exportProject, exportReport, projectFileName, reportFileName } from '../utils/exchange';
 import { currentList, periodsAt } from '../utils/project';
 import { actionTotal, isStatus, recentHistory, submitted } from '../utils/report';
 import { isRichEmpty } from '../utils/rich';
@@ -33,6 +36,31 @@ export const NotFound: React.FC = (): JSX.Element => (
 );
 
 const PER_PAGE = 5;
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+// A link inside a report row, which is itself a link: it acts alone.
+const RowLink: React.FC<{ label: string; title: string; onOpen: () => void }> = ({ label, title, onOpen }): JSX.Element => (
+  <span
+    role="link"
+    tabIndex={0}
+    className="pulse-pdf-link"
+    title={title}
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onOpen();
+    }}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpen();
+      }
+    }}
+  >
+    {label}
+  </span>
+);
 const ACTION_TYPES: ItemType[] = ['ASK', 'APPROVAL', 'DIRECTIVE'];
 
 const ProjectScreen: React.FC<ProjectScreenProps> = ({ projects, id, reload, notify }): JSX.Element => {
@@ -40,6 +68,8 @@ const ProjectScreen: React.FC<ProjectScreenProps> = ({ projects, id, reload, not
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const closeConfirm = useCallback(() => setConfirming(false), []);
 
   if (!p) return <NotFound />;
@@ -55,6 +85,21 @@ const ProjectScreen: React.FC<ProjectScreenProps> = ({ projects, id, reload, not
   const pages = Math.max(1, Math.ceil(p.reports.length / PER_PAGE));
   const pg = Math.min(page, pages - 1);
   const shown = p.reports.slice(pg * PER_PAGE, (pg + 1) * PER_PAGE);
+
+  // Download a .json export, then say so.
+  const download = async (name: string, make: () => Promise<unknown>): Promise<void> => {
+    setExporting(true);
+    try {
+      downloadJson(name, await make());
+      notify(`${name} downloaded`);
+    } catch (err) {
+      notify((err as Error).message, 'danger');
+    } finally {
+      setExporting(false);
+    }
+  };
+  const exportAs = (withReports: boolean): Promise<void> =>
+    download(projectFileName(p.id, withReports), () => exportProject(p, withReports));
 
   const setStatus = async (next: 'completed' | 'in-progress'): Promise<void> => {
     setBusy(true);
@@ -78,6 +123,20 @@ const ProjectScreen: React.FC<ProjectScreenProps> = ({ projects, id, reload, not
   return (
     <>
       <AppHeader crumbs={[{ label: 'Projects', href: href.projects() }, { label: p.name }]}>
+        <ExportMenu
+          label={exporting ? 'Preparing…' : 'Export'}
+          heading="Export this project as a .json file"
+          ghost
+          icon="download"
+          width={340}
+          disabled={exporting}
+          items={[
+            { key: 'all', label: 'Project and reports', desc: `Setup, logos and ${plural(p.reports.length, 'report')} · ${projectFileName(p.id, true)}`, abbr: 'JSON', tone: JSON_TONE },
+            { key: 'setup', label: 'Project setup only', desc: 'Dates, timeline, objectives and logos · no reports', abbr: 'JSON', tone: JSON_TONE },
+          ]}
+          footer="Bring a file back in with Import on the Projects page."
+          onPick={(key) => exportAs(key === 'all')}
+        />
         {done ? (
           <button type="button" className="s-btn" disabled={busy} onClick={() => setStatus('in-progress')}>Reopen project</button>
         ) : (
@@ -132,12 +191,20 @@ const ProjectScreen: React.FC<ProjectScreenProps> = ({ projects, id, reload, not
 
           <InkCard
             title={`Reports · ${p.reports.length}`}
-            meta={last && !done ? (
-              <a href={href.newReport(p.id, last.json)} className="pulse-ink__btn">
-                <Icon name="copy" size={14} />
-                {`Start from ${dayMonth(last.date as string)} report`}
-              </a>
-            ) : undefined}
+            meta={(
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button type="button" className="pulse-ink__btn" onClick={() => setImporting(true)}>
+                  <Icon name="upload" size={14} />
+                  Import report
+                </button>
+                {last && !done && (
+                  <a href={href.newReport(p.id, last.json)} className="pulse-ink__btn">
+                    <Icon name="copy" size={14} />
+                    {`Start from ${dayMonth(last.date as string)} report`}
+                  </a>
+                )}
+              </span>
+            )}
           >
             {p.reports.length > 0 && (
               <div className="pulse-table__head pulse-reports">
@@ -172,27 +239,16 @@ const ProjectScreen: React.FC<ProjectScreenProps> = ({ projects, id, reload, not
                   <StatusChip status={r.status} />
                   <span className="pulse-muted">{n ? `${n} item${n === 1 ? '' : 's'}` : '—'}</span>
                   <span className="pulse-reports__files">
-                    {r.draft ? <span className="pulse-continue">Continue</span> : r.pdf ? (
-                      <span
-                        role="link"
-                        tabIndex={0}
-                        className="pulse-pdf-link"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          window.open(reportUrl(p.id, r.pdf as string), '_blank', 'noopener');
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            window.open(reportUrl(p.id, r.pdf as string), '_blank', 'noopener');
-                          }
-                        }}
-                      >
-                        PDF
-                      </span>
-                    ) : <span className="pulse-muted">—</span>}
+                    {r.draft ? <span className="pulse-continue">Continue</span> : (
+                      <>
+                        {r.pdf && <RowLink label="PDF" title="Download this report as a PDF" onOpen={() => window.open(reportUrl(p.id, r.pdf as string), '_blank', 'noopener')} />}
+                        <RowLink
+                          label="JSON"
+                          title="Export this report as a .json file"
+                          onOpen={() => download(reportFileName(p.id, r.date || r.json.slice(0, 8)), () => exportReport(p, r.json))}
+                        />
+                      </>
+                    )}
                     <Icon name="chevron-right" />
                   </span>
                 </a>
@@ -220,6 +276,7 @@ const ProjectScreen: React.FC<ProjectScreenProps> = ({ projects, id, reload, not
         </div>
       </main>
 
+      {importing && <ImportDialog projects={projects} reload={reload} notify={notify} onClose={() => setImporting(false)} />}
       {confirming && (
         <ConfirmDialog
           title={`Close '${p.name}'?`}

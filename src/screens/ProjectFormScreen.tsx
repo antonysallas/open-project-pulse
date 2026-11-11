@@ -11,7 +11,7 @@ import { createProject, fetchProjectDetails, updateProject } from '../utils/api'
 import { addDays, daysBetween, toDate, today } from '../utils/dates';
 import { savedTime, useDraft } from '../utils/drafts';
 import { useOtherEditors } from '../utils/editing';
-import { forgetLogo } from '../utils/logo';
+import { forgetLogo, sizedSvg } from '../utils/logo';
 import { gantt, genPhases, genSprints, NEW_ID, periodState, slug, toStoredProject } from '../utils/project';
 import { newItem } from '../utils/report';
 import { isRichEmpty, richHtml } from '../utils/rich';
@@ -30,11 +30,16 @@ interface FormState {
   name: string;
   team: string;
   customer: string;
-  logo: string;
+  logo: string; // the customer's
   logoName: string;
   logoChanged: boolean;
   logoErr: string;
   dragOver: boolean;
+  companyLogo: string; // your own organisation's
+  companyLogoName: string;
+  companyLogoChanged: boolean;
+  companyLogoErr: string;
+  companyDragOver: boolean;
   start: string;
   end: string;
   model: DeliveryModel;
@@ -54,6 +59,73 @@ let rowKey = 1;
 const keyed = (rows: Period[]): Row[] => rows.map((r) => ({ ...r, key: `r${rowKey++}` }));
 const LOGO_TYPES = ['image/png', 'image/svg+xml', 'image/jpeg', 'image/webp'];
 
+const subtle: React.CSSProperties = { color: 'var(--text-muted)', fontWeight: 400 };
+
+// The two logos the form takes, and the fields each keeps.
+type LogoSlot = 'customer' | 'company';
+const SLOT = {
+  customer: { url: 'logo', name: 'logoName', changed: 'logoChanged', err: 'logoErr', drag: 'dragOver' },
+  company: { url: 'companyLogo', name: 'companyLogoName', changed: 'companyLogoChanged', err: 'companyLogoErr', drag: 'companyDragOver' },
+} as const;
+const NO_LOGOS = {
+  logo: '', logoName: '', logoChanged: false, logoErr: '', dragOver: false,
+  companyLogo: '', companyLogoName: '', companyLogoChanged: false, companyLogoErr: '', companyDragOver: false,
+};
+
+interface LogoFieldProps {
+  label: string;
+  url: string;
+  name: string;
+  err: string;
+  drag: boolean;
+  hint?: [string, string]; // under the field: while empty, once filled
+  onFile: (file: File) => void;
+  onDrag: (over: boolean) => void;
+  onRemove: () => void;
+}
+
+// A logo drop zone, or the logo with Remove once there is one.
+const LogoField: React.FC<LogoFieldProps> = ({ label, url, name, err, drag, hint, onFile, onDrag, onRemove }): JSX.Element => (
+  <div className="s-field">
+    <span className="s-label">{label} <span style={subtle}>· optional</span></span>
+    {url ? (
+      <div className="pulse-logo-box">
+        <img src={url} alt={label} />
+        <span className="pulse-help" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+        <button type="button" className="s-btn s-btn--ghost s-btn--sm" onClick={onRemove}>Remove</button>
+      </div>
+    ) : (
+      <label
+        className="s-dropzone"
+        data-dragover={drag ? 'true' : undefined}
+        style={{ position: 'relative', padding: '8px 12px', flexDirection: 'row', gap: 8, justifyContent: 'flex-start', minHeight: 36, boxSizing: 'border-box' }}
+        onDragOver={(e) => { e.preventDefault(); if (!drag) onDrag(true); }}
+        onDragLeave={() => onDrag(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          onDrag(false);
+          const file = e.dataTransfer.files && e.dataTransfer.files[0];
+          if (file) onFile(file);
+        }}
+      >
+        <Icon name="image-up" />
+        <span>Drop a logo or <span style={{ color: 'var(--accent-text)', fontWeight: 500 }}>browse</span></span>
+        <input
+          type="file"
+          accept={LOGO_TYPES.join(',')}
+          onChange={(e) => {
+            const file = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (file) onFile(file);
+          }}
+        />
+      </label>
+    )}
+    {err && <span className="s-error">{err}</span>}
+    {hint && !err && <span className="pulse-help">{url ? hint[1] : hint[0]}</span>}
+  </div>
+);
+
 function nextMonday(from: string): string {
   const wd = toDate(from).getDay();
   return addDays(from, ((8 - wd) % 7) || 7);
@@ -62,7 +134,7 @@ function nextMonday(from: string): string {
 function initialState(p: Project | undefined): FormState {
   if (p) {
     return {
-      name: p.name, team: p.team, customer: p.customer, logo: '', logoName: '', logoChanged: false, logoErr: '', dragOver: false,
+      name: p.name, team: p.team, customer: p.customer, ...NO_LOGOS,
       start: p.start, end: p.end, model: p.model, sprintWeeks: p.sprintWeeks,
       sprints: keyed(p.model === 'sprint' ? p.periods : genSprints(p.start, p.end, p.sprintWeeks)),
       phases: keyed(p.model === 'milestone' ? p.periods : genPhases(p.start, p.end)),
@@ -72,17 +144,23 @@ function initialState(p: Project | undefined): FormState {
   const start = nextMonday(today());
   const end = addDays(start, 7 * 12 - 3);
   return {
-    name: '', team: '', customer: '', logo: '', logoName: '', logoChanged: false, logoErr: '', dragOver: false,
+    name: '', team: '', customer: '', ...NO_LOGOS,
     start, end, model: 'milestone', sprintWeeks: 2,
     sprints: keyed(genSprints(start, end, 2)), phases: keyed(genPhases(start, end)), goals: [newItem()],
   };
 }
 
-// What a draft keeps: not the drop zone's state, and the logo only when it was
-// changed (the stored one loads from the details file).
-const draftOf = (s: FormState): FormState => ({ ...s, dragOver: false, logoErr: '', ...(s.logoChanged ? {} : { logo: '', logoName: '' }) });
-
-const subtle: React.CSSProperties = { color: 'var(--text-muted)', fontWeight: 400 };
+// What a draft keeps: not the drop zones' state, and a logo only when it was
+// changed (the stored ones load from the details file).
+const draftOf = (s: FormState): FormState => ({
+  ...s,
+  dragOver: false,
+  logoErr: '',
+  companyDragOver: false,
+  companyLogoErr: '',
+  ...(s.logoChanged ? {} : { logo: '', logoName: '' }),
+  ...(s.companyLogoChanged ? {} : { companyLogo: '', companyLogoName: '' }),
+});
 const MODELS: [DeliveryModel, string, string][] = [
   ['milestone', 'Phases', 'Named phases with their own dates. Phases can overlap. Reports show Accomplishments and Ongoing and Outstanding Tasks.'],
   ['sprint', 'Sprints', 'Fixed-length iterations back to back. Reports show Accomplishments and Upcoming Goals.'],
@@ -106,14 +184,20 @@ const ProjectFormScreen: React.FC<ProjectFormScreenProps> = ({ projects, id, rel
     phases: keyed(saved.phases || cur.phases),
     goals: (saved.goals || cur.goals).map((g) => newItem(g.text)),
     ...(saved.logoChanged ? {} : { logo: cur.logo, logoName: cur.logoName }),
+    ...(saved.companyLogoChanged ? {} : { companyLogo: cur.companyLogo, companyLogoName: cur.companyLogoName }),
   })));
 
-  // The logo is not in the project list: load it from the details file.
+  // The logos are not in the project list: load them from the details file.
   useEffect(() => {
-    if (!editing || !editing.hasLogo) return undefined;
+    if (!editing || (!editing.hasLogo && !editing.hasCompanyLogo)) return undefined;
     let live = true;
     fetchProjectDetails(editing.id).then((d) => {
-      if (live && typeof d.logo === 'string') setF((s) => (s.logoChanged ? s : { ...s, logo: d.logo || '', logoName: d.logoName || 'Current logo' }));
+      if (!live) return;
+      setF((s) => ({
+        ...s,
+        ...(s.logoChanged || typeof d.logo !== 'string' ? {} : { logo: d.logo, logoName: d.logoName || 'Current logo' }),
+        ...(s.companyLogoChanged || typeof d.companyLogo !== 'string' ? {} : { companyLogo: d.companyLogo, companyLogoName: d.companyLogoName || 'Current logo' }),
+      }));
     }).catch(() => undefined);
     return () => {
       live = false;
@@ -153,25 +237,42 @@ const ProjectFormScreen: React.FC<ProjectFormScreenProps> = ({ projects, id, rel
   const field = (name: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>): void => set({ [name]: e.target.value } as Partial<FormState>);
   const updRow = (key: string, patch: Partial<Period>): void => set((s) => ({ [rk]: s[rk].map((r) => (r.key === key ? { ...r, ...patch } : r)) }));
 
-  const readLogo = (file: File): void => {
+  const setSlot = (slot: LogoSlot, patch: Partial<Record<'url' | 'name' | 'changed' | 'err' | 'drag', string | boolean>>): void =>
+    set(Object.fromEntries(Object.entries(patch).map(([k, v]) => [SLOT[slot][k as keyof typeof SLOT.customer], v])) as Partial<FormState>);
+  const readLogo = (slot: LogoSlot, file: File): void => {
     if (!LOGO_TYPES.includes(file.type)) {
-      set({ logoErr: "That file isn't a PNG, SVG, JPEG or WebP image. Choose another." });
+      setSlot(slot, { err: "That file isn't a PNG, SVG, JPEG or WebP image. Choose another." });
       return;
     }
     if (file.size > 1048576) {
-      set({ logoErr: `${file.name} is ${(file.size / 1048576).toFixed(1)} MB. Choose a file under 1 MB.` });
+      setSlot(slot, { err: `${file.name} is ${(file.size / 1048576).toFixed(1)} MB. Choose a file under 1 MB.` });
       return;
     }
     const rd = new FileReader();
-    rd.onload = () => set({ logo: String(rd.result), logoName: `${file.name} · ${Math.max(1, Math.round(file.size / 1024))} KB`, logoErr: '', logoChanged: true });
-    rd.onerror = () => set({ logoErr: `Couldn't read ${file.name}. Try again.` });
+    rd.onload = () => {
+      const url = sizedSvg(String(rd.result));
+      if (!url) {
+        setSlot(slot, { err: `${file.name} has no size, so reports can't place it. Add width and height to its <svg> tag, or choose a PNG.` });
+        return;
+      }
+      setSlot(slot, { url, name: `${file.name} · ${Math.max(1, Math.round(file.size / 1024))} KB`, err: '', changed: true });
+    };
+    rd.onerror = () => setSlot(slot, { err: `Couldn't read ${file.name}. Try again.` });
     rd.readAsDataURL(file);
   };
-  const onLogoInput = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if (file) readLogo(file);
-  };
+  const logoField = (slot: LogoSlot, label: string, hint?: [string, string]): JSX.Element => (
+    <LogoField
+      label={label}
+      url={f[SLOT[slot].url]}
+      name={f[SLOT[slot].name]}
+      err={f[SLOT[slot].err]}
+      drag={f[SLOT[slot].drag]}
+      hint={hint}
+      onFile={(file) => readLogo(slot, file)}
+      onDrag={(over) => setSlot(slot, { drag: over })}
+      onRemove={() => setSlot(slot, { url: '', name: '', changed: true, err: '' })}
+    />
+  );
 
   const addPeriod = (): void => set((s) => {
     const list = s[rk];
@@ -209,6 +310,10 @@ const ProjectFormScreen: React.FC<ProjectFormScreenProps> = ({ projects, id, rel
     if (mode === 'edit' && !f.logoChanged) {
       delete body.logo;
       delete body.logoName;
+    }
+    if (mode === 'edit' && !f.companyLogoChanged) {
+      delete body.companyLogo;
+      delete body.companyLogoName;
     }
     setSaving(true);
     try {
@@ -310,7 +415,7 @@ const ProjectFormScreen: React.FC<ProjectFormScreenProps> = ({ projects, id, rel
                 <input className="s-input" placeholder="e.g. Acme Inc." value={f.customer} onChange={field('customer')} />
               </label>
             </div>
-            <div className="pulse-grid">
+            <div className="pulse-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
               <label className="s-field">
                 <span className="s-label">Start date</span>
                 <input type="date" className="s-input" value={f.start} onChange={field('start')} />
@@ -320,35 +425,11 @@ const ProjectFormScreen: React.FC<ProjectFormScreenProps> = ({ projects, id, rel
                 <input type="date" className="s-input" value={f.end} aria-invalid={errors.end ? true : undefined} onChange={field('end')} />
                 {errors.end && <span className="s-error">{errors.end}</span>}
               </label>
-              <div className="s-field">
-                <span className="s-label">Customer logo <span style={subtle}>· optional</span></span>
-                {f.logo ? (
-                  <div className="pulse-logo-box">
-                    <img src={f.logo} alt="Customer logo" />
-                    <span className="pulse-help" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.logoName}</span>
-                    <button type="button" className="s-btn s-btn--ghost s-btn--sm" onClick={() => set({ logo: '', logoName: '', logoChanged: true, logoErr: '' })}>Remove</button>
-                  </div>
-                ) : (
-                  <label
-                    className="s-dropzone"
-                    data-dragover={f.dragOver ? 'true' : undefined}
-                    style={{ position: 'relative', padding: '8px 12px', flexDirection: 'row', gap: 8, justifyContent: 'flex-start', minHeight: 36, boxSizing: 'border-box' }}
-                    onDragOver={(e) => { e.preventDefault(); if (!f.dragOver) set({ dragOver: true }); }}
-                    onDragLeave={() => set({ dragOver: false })}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      set({ dragOver: false });
-                      const file = e.dataTransfer.files && e.dataTransfer.files[0];
-                      if (file) readLogo(file);
-                    }}
-                  >
-                    <Icon name="image-up" />
-                    <span>Drop a logo or <span style={{ color: 'var(--accent-text)', fontWeight: 500 }}>browse</span></span>
-                    <input type="file" accept={LOGO_TYPES.join(',')} onChange={onLogoInput} />
-                  </label>
-                )}
-                {f.logoErr && <span className="s-error">{f.logoErr}</span>}
-              </div>
+              {logoField('company', 'Company logo', [
+                'Your own organisation. Leave empty to keep the default logo on reports.',
+                'Shown beside the customer logo in the footer of every report page.',
+              ])}
+              {logoField('customer', 'Customer logo')}
             </div>
           </div>
         </InkCard>

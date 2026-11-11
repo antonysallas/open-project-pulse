@@ -38,7 +38,8 @@ export interface Project {
   periods: Period[];
   goals: string[];
   status: ProjectStatus;
-  hasLogo: boolean;
+  hasLogo: boolean; // a customer logo
+  hasCompanyLogo: boolean; // your own organisation's, for this project
   reports: ReportSummary[];
 }
 
@@ -66,9 +67,12 @@ export interface StoredProject {
   sprints?: StoredPeriod[];
   phases?: StoredPeriod[];
   projectGoals?: string[];
-  logo?: string;
+  logo?: string; // the customer's, a data URL
   logoName?: string;
-  hasLogo?: boolean;
+  companyLogo?: string; // your own organisation's, a data URL; none: the one in data/brand
+  companyLogoName?: string;
+  hasLogo?: boolean; // set by GET /api/projects, which leaves the logos out
+  hasCompanyLogo?: boolean;
   reports?: ReportSummary[];
 }
 

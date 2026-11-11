@@ -121,4 +121,11 @@ export const putDraft = (key: string, draft: unknown): Promise<unknown> => postJ
 
 export const dropDraft = (key: string): Promise<unknown> => postJson(`/api/drafts/${enc(key)}`, { draft: null });
 
+// Bring in a .json export (utils/exchange.ts). mode says what to do when the
+// project is already in Pulse. All or nothing: a refusal changes nothing.
+export type ImportMode = 'copy' | 'replace';
+export type ImportResult = { ok: true; id: string; name: string; reports: number } | { ok: true; id: string; filename: string; replaced: boolean };
+
+export const importExport = (file: unknown, mode: ImportMode | null): Promise<ImportResult> => postJson('/api/import', { file, mode });
+
 export const reportUrl = (id: string, file: string): string => `/data/reports/${enc(id)}/${enc(file)}`;

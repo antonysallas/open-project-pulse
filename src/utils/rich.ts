@@ -35,7 +35,7 @@ export function leadHtml(s: string, sep = ': '): string {
   return `<strong>${escapeHtml(s.slice(0, i))}${colon ? ':' : ''}</strong>${colon ? ' ' : ' — '}${escapeHtml(s.slice(i + sep.length))}`;
 }
 
-const looksLikeHtml = (s: string): boolean => /<\/?[a-z][^>]*>|&[a-z#0-9]+;/i.test(s);
+export const looksLikeHtml = (s: string): boolean => /<\/?[a-z][^>]*>|&[a-z#0-9]+;/i.test(s);
 
 // Any stored text as safe rich HTML: HTML is cleaned, plain text is escaped
 // (with its lead in bold).

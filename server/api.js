@@ -16,6 +16,9 @@
 //   POST /api/reports/<id>/pdf   {filename, base64}   save its PDF
 //   POST /api/reports/<id>/lock  {filename, locked}   lock a submitted report
 //                                         (no more saves to it or its PDF) or unlock it
+//   POST /api/import             {file, mode}         bring in a .json export (a project
+//                                         with its reports, or one report); mode is
+//                                         'copy' or 'replace' when the project exists
 //   GET  /api/session                     whether sign-in is on, and who is signed in
 //   GET  /api/drafts/<key>                a form's unsaved state, or null  (dataDir/drafts)
 //   POST /api/drafts/<key>       {draft}              keep it; {draft: null} drops it
@@ -27,7 +30,9 @@
 // becomes _), so nothing is read or written outside the two folders. A new
 // project's id is lowercase letters, digits and dashes, so report file names
 // (YYYYMMDD_<id>_report.json) always split cleanly. A project is stored only
-// with the fields cleanProject() knows. Only the lock call sets a report's
+// with the fields cleanProject() knows, and an imported report with those
+// cleanReport() knows. An import replaces nothing for good: what it replaces
+// moves to dataDir/replaced/<id>-<time>. Only the lock call sets a report's
 // locked, lockedAt and, with sign-in on, lockedBy. A POST must be JSON, and one from
 // another site is refused.
 const fs = require('fs');
@@ -43,6 +48,11 @@ const MAX_LOGO = 1.5 * 1024 * 1024; // a 1 MB image as a data URL
 const LOGO_TYPES = { svg: 'image/svg+xml', png: 'image/png' };
 const STATUSES = ['in-progress', 'completed'];
 const TYPES = ['ASK', 'APPROVAL', 'DIRECTIVE', 'FYI'];
+const REPORT_STATUSES = ['on-track', 'at-risk', 'delayed'];
+const EXPORT_VERSION = 1; // the newest .json export this version reads
+const MAX_TEXT = 20000; // one rich-text item or reason in an imported report
+const MAX_ITEMS = 200; // items in one list of an imported report
+const MAX_REPORTS = 1000; // reports in one imported project
 const DRAFT_KEY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/;
 
 function safeName(name, ext) {
@@ -162,10 +172,11 @@ function cleanProject(input, id) {
 
   const goals = p.projectGoals === undefined ? [] : p.projectGoals;
   if (!Array.isArray(goals) || goals.length > 50) return { error: 'Too many goals.' };
+  const badLogo = (v) => v && (typeof v !== 'string' || v.length > MAX_LOGO || !LOGO.test(v));
   const logo = p.logo || '';
-  if (logo && (typeof logo !== 'string' || logo.length > MAX_LOGO || !LOGO.test(logo))) {
-    return { error: 'The logo must be a PNG, JPEG, WebP or SVG image under 1 MB.' };
-  }
+  if (badLogo(logo)) return { error: 'The customer logo must be a PNG, JPEG, WebP or SVG image under 1 MB.' };
+  const companyLogo = p.companyLogo || '';
+  if (badLogo(companyLogo)) return { error: 'The company logo must be a PNG, JPEG, WebP or SVG image under 1 MB.' };
 
   const project = {
     id, name, description: text(p.description, 1000), customer: text(p.customer, 200), teamName: text(p.teamName, 200),
@@ -178,7 +189,77 @@ function cleanProject(input, id) {
     project.logo = logo;
     project.logoName = text(p.logoName, 200);
   }
+  // Your own organisation's, for this project only; without it reports show
+  // the one in dataDir/brand.
+  if (companyLogo) {
+    project.companyLogo = companyLogo;
+    project.companyLogoName = text(p.companyLogoName, 200);
+  }
   return { project };
+}
+
+// Rich-text items as stored: { text, type }. Null when the list isn't one.
+function cleanItems(list) {
+  if (list === undefined) return [];
+  if (!Array.isArray(list) || list.length > MAX_ITEMS) return null;
+  const out = [];
+  for (const item of list) {
+    if (!item || typeof item.text !== 'string' || item.text.length > MAX_TEXT || !TYPES.includes(item.type)) return null;
+    out.push({ text: item.text, type: item.type });
+  }
+  return out;
+}
+
+// A report from an imported file, built only from the fields a saved report
+// has (src/types/ReportTypes.ts StoredReport), lock left out. Its text is shown
+// only through the app's rich-text cleaner, as every saved report's is.
+// Returns { report } or { error }.
+function cleanReport(input) {
+  const r = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  if (!isDate(r.reportDate)) return { error: 'a report has no date' };
+  if (!REPORT_STATUSES.includes(r.status)) return { error: `the ${r.reportDate} report has no status` };
+  const report = { reportDate: r.reportDate };
+  if (r.nextReportDate !== undefined) {
+    if (!isDate(r.nextReportDate)) return { error: `the ${r.reportDate} report has a bad next report date` };
+    report.nextReportDate = r.nextReportDate;
+  }
+  report.status = r.status;
+  for (const key of ['accomplishments', 'upcomingGoals', 'peopleAndProcess', 'technology']) {
+    const items = cleanItems(r[key]);
+    if (!items) return { error: `the ${r.reportDate} report has a damaged list` };
+    report[key] = items;
+  }
+  report.draft = r.draft === true;
+  if (r.currentPeriods !== undefined) {
+    const list = r.currentPeriods;
+    if (!Array.isArray(list) || list.length > 200 || !list.every((i) => Number.isInteger(i) && i >= 0 && i < 200)) {
+      return { error: `the ${r.reportDate} report has damaged periods` };
+    }
+    report.currentPeriods = list;
+  }
+  for (const key of ['sprintGoal', 'nextSprintGoal']) {
+    if (r[key] === undefined) continue;
+    if (typeof r[key] !== 'string') return { error: `the ${r.reportDate} report has a damaged sprint goal` };
+    report[key] = r[key].trim().slice(0, 50);
+  }
+  if (r.statusReason !== undefined) {
+    if (typeof r.statusReason !== 'string' || r.statusReason.length > MAX_TEXT) return { error: `the ${r.reportDate} report has a damaged reason` };
+    if (r.statusReason) report.statusReason = r.statusReason;
+  }
+  return { report };
+}
+
+const reportName = (id, date) => `${date.replace(/-/g, '')}_${id}_report.json`;
+
+// The id and name "Keep both" gives a copy: <id>-2 and "<name> (2)", or the
+// next number free.
+function copyOf(list, id, name) {
+  for (let n = 2; n < 1000; n++) {
+    const suffix = `-${n}`;
+    const next = `${id.slice(0, 60 - suffix.length).replace(/-+$/, '')}${suffix}`;
+    if (ID.test(next) && !list.some((p) => p.id === next)) return { id: next, name: `${name} (${n})` };
+  }
+  return null;
 }
 
 // projects.json's entry for a project: enough to list it.
@@ -206,6 +287,16 @@ function createApi({ dataDir, reportsDir, auth = null, origin = null, maxBody = 
     }
   }
   const known = (id) => ID.test(id) && readList().some((p) => p.id === id);
+
+  // A saved PDF downloads under the name Export gives a new one
+  // (src/utils/report.ts downloadName): Project_Name_Report_YYYY-MM-DD.pdf.
+  function pdfName(id, file) {
+    const m = file.match(/^(\d{4})(\d{2})(\d{2})_/);
+    if (!m) return null;
+    const entry = readList().find((p) => p.id === id) || {};
+    const name = String(entry.name || id).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'Project';
+    return `${name}_Report_${m[1]}-${m[2]}-${m[3]}.pdf`;
+  }
 
   // A project's details file, or its projects.json entry when it has none.
   function readDetails(entry) {
@@ -256,19 +347,20 @@ function createApi({ dataDir, reportsDir, auth = null, origin = null, maxBody = 
 
   function listProjects(res) {
     const projects = readList().filter((p) => p && ID.test(p.id)).map((entry) => {
-      const { logo, ...details } = readDetails(entry);
-      return { ...details, hasLogo: !!logo, reports: reportSummaries(entry.id) };
+      const { logo, companyLogo, ...details } = readDetails(entry);
+      return { ...details, hasLogo: !!logo, hasCompanyLogo: !!companyLogo, reports: reportSummaries(entry.id) };
     });
     send(res, 200, { projects });
   }
 
-  function sendFile(res, file, type, versioned = false) {
+  function sendFile(res, file, type, versioned = false, downloadAs = null) {
     fs.readFile(file, (err, data) => {
       if (err) {
         send(res, 404, { error: 'not found' });
         return;
       }
       if (versioned) res.setHeader('X-Report-Version', versionOf(data));
+      if (downloadAs) res.setHeader('Content-Disposition', `inline; filename="${downloadAs}"`);
       send(res, 200, data, type);
     });
   }
@@ -314,8 +406,8 @@ function createApi({ dataDir, reportsDir, auth = null, origin = null, maxBody = 
     const next = list.some((p) => p.id === id) ? list.map((p) => (p.id === id ? entry : p)) : [...list, entry];
     writeAtomic(listFile, JSON.stringify({ projects: next }, null, 2));
     log(`${base.id ? 'changed' : 'created'} project ${id}${forUser(req)}`);
-    const { logo, ...rest } = project;
-    return send(res, base.id ? 200 : 201, { ok: true, project: { ...rest, hasLogo: !!logo } });
+    const { logo, companyLogo, ...rest } = project;
+    return send(res, base.id ? 200 : 201, { ok: true, project: { ...rest, hasLogo: !!logo, hasCompanyLogo: !!companyLogo } });
   }
 
   // A saved report's JSON, or null.
@@ -403,6 +495,142 @@ function createApi({ dataDir, reportsDir, auth = null, origin = null, maxBody = 
     writeAtomic(path.join(reportsDir, id, name), JSON.stringify(report, null, 2));
     log(`${report.locked ? 'locked' : 'unlocked'} ${id}/${name}${forUser(req)}`);
     return send(res, 200, { ok: true, report });
+  }
+
+  // Bring in a .json export (src/utils/exchange.ts). All or nothing: the new
+  // reports are written to a folder of their own first and swapped in by
+  // rename; whatever they replace moves to dataDir/replaced/<id>-<time>, and
+  // a step that fails undoes the ones before it.
+  const DAMAGED = 'This file is incomplete or damaged, so nothing was imported. Export it again from Pulse.';
+  const asideDir = (id) => path.join(dataDir, 'replaced', `${id}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
+
+  async function importFile(req, res) {
+    const body = await readJson(req, res);
+    if (body === undefined) return undefined;
+    const file = body && body.file;
+    if (!file || typeof file !== 'object' || file.format !== 'pulse-export') {
+      return send(res, 400, { error: "This isn't a Pulse export. Choose a .json file exported from Pulse." });
+    }
+    if (!Number.isInteger(file.version) || file.version < 1) return send(res, 400, { error: DAMAGED });
+    if (file.version > EXPORT_VERSION) return send(res, 400, { error: 'This file was made by a newer version of Pulse. Update Pulse, then import it again.' });
+    if (file.kind === 'project') return importProject(req, res, file, body.mode);
+    if (file.kind === 'report') return importReport(req, res, file);
+    return send(res, 400, { error: DAMAGED });
+  }
+
+  function importProject(req, res, file, mode) {
+    const src = file.project;
+    if (!src || typeof src !== 'object' || typeof src.id !== 'string' || !ID.test(src.id) ||
+        !Array.isArray(file.reports) || file.reports.length > MAX_REPORTS) {
+      return send(res, 400, { error: DAMAGED });
+    }
+    const list = readList();
+    const exists = list.some((p) => p.id === src.id);
+    if (exists && mode !== 'copy' && mode !== 'replace') {
+      return send(res, 409, { error: `A project with ID ${src.id} is already in Pulse. Choose Keep both or Replace existing.` });
+    }
+    let id = src.id;
+    let name = src.name;
+    if (exists && mode === 'copy') {
+      const copy = copyOf(list, src.id, text(src.name, 200) || src.id);
+      if (!copy) return send(res, 409, { error: `There are too many copies of ${src.id} already.` });
+      ({ id, name } = copy);
+    }
+    const { project, error } = cleanProject({ ...src, name }, id);
+    if (error) return send(res, 400, { error: `${DAMAGED} (${error})` });
+    const reports = [];
+    for (const r of file.reports) {
+      const { report, error: bad } = cleanReport(r);
+      if (bad) return send(res, 400, { error: `${DAMAGED} (In the file, ${bad}.)` });
+      if (reports.some((x) => x.reportDate === report.reportDate)) {
+        return send(res, 400, { error: `${DAMAGED} (It has two reports for ${report.reportDate}.)` });
+      }
+      reports.push(report);
+    }
+
+    const dir = path.join(reportsDir, id);
+    const detailsFile = path.join(dataDir, 'projects', `${id}.json`);
+    const tmp = path.join(reportsDir, `.import-${id}-${process.pid}-${Date.now()}`);
+    const aside = asideDir(id);
+    const undo = [];
+    try {
+      fs.mkdirSync(tmp, { recursive: true, mode: 0o700 });
+      for (const r of reports) fs.writeFileSync(path.join(tmp, reportName(id, r.reportDate)), JSON.stringify(r, null, 2), { mode: 0o600 });
+      if (fs.existsSync(dir)) {
+        fs.mkdirSync(aside, { recursive: true, mode: 0o700 });
+        renameRetrying(dir, path.join(aside, 'reports'));
+        undo.push(() => renameRetrying(path.join(aside, 'reports'), dir));
+      }
+      renameRetrying(tmp, dir);
+      undo.push(() => renameRetrying(dir, tmp));
+      const old = fs.existsSync(detailsFile) ? fs.readFileSync(detailsFile) : null;
+      if (old) {
+        fs.mkdirSync(aside, { recursive: true, mode: 0o700 });
+        fs.writeFileSync(path.join(aside, `${id}.json`), old, { mode: 0o600 });
+      }
+      writeAtomic(detailsFile, JSON.stringify(project, null, 2));
+      undo.push(() => (old ? writeAtomic(detailsFile, old) : fs.rmSync(detailsFile, { force: true })));
+      // The list last, so it never names a project that isn't all there.
+      const entry = summaryOf(project);
+      const next = list.some((p) => p.id === id) ? list.map((p) => (p.id === id ? entry : p)) : [...list, entry];
+      writeAtomic(listFile, JSON.stringify({ projects: next }, null, 2));
+    } catch (err) {
+      for (const step of undo.reverse()) {
+        try {
+          step();
+        } catch (e) {
+          log(`import of ${id}: couldn't undo a step: ${e.message}`);
+        }
+      }
+      fs.rmSync(tmp, { recursive: true, force: true });
+      throw err;
+    }
+    log(`imported project ${id} with ${reports.length} reports${exists && mode === 'replace' ? `, replacing the old one (kept in ${path.relative(dataDir, aside)})` : ''}${forUser(req)}`);
+    return send(res, 200, { ok: true, id, name: project.name, reports: reports.length });
+  }
+
+  function importReport(req, res, file) {
+    const id = file.projectId;
+    if (typeof id !== 'string' || !ID.test(id)) return send(res, 400, { error: DAMAGED });
+    if (!known(id)) {
+      const owner = text(file.projectName, 200) || id;
+      return send(res, 404, { error: `This report belongs to '${owner}', which isn't in Pulse. Import that project's file first, then this report.` });
+    }
+    const { report, error } = cleanReport(file.report);
+    if (error) return send(res, 400, { error: `${DAMAGED} (In the file, ${error}.)` });
+    const name = reportName(id, report.reportDate);
+    const pdf = name.replace(/\.json$/, '.pdf');
+    const dir = path.join(reportsDir, id);
+    const current = readReport(id, name);
+    if (current && current.locked === true) {
+      return send(res, 409, { error: `The ${report.reportDate} report is locked. Unlock it, then import again.` });
+    }
+    // The report it replaces, and its PDF, which would no longer match.
+    const aside = asideDir(id);
+    const replaced = [name, pdf].filter((n) => fs.existsSync(path.join(dir, n)));
+    let pdfMoved = false;
+    try {
+      if (replaced.length) {
+        fs.mkdirSync(aside, { recursive: true, mode: 0o700 });
+        if (replaced.includes(name)) fs.copyFileSync(path.join(dir, name), path.join(aside, name));
+        if (replaced.includes(pdf)) {
+          renameRetrying(path.join(dir, pdf), path.join(aside, pdf));
+          pdfMoved = true;
+        }
+      }
+      writeAtomic(path.join(dir, name), JSON.stringify(report, null, 2));
+    } catch (err) {
+      if (pdfMoved) {
+        try {
+          renameRetrying(path.join(aside, pdf), path.join(dir, pdf));
+        } catch (e) {
+          log(`import of ${id}/${name}: couldn't put the PDF back: ${e.message}`);
+        }
+      }
+      throw err;
+    }
+    log(`imported ${id}/${name}${replaced.length ? ` (the old one kept in ${path.relative(dataDir, aside)})` : ''}${forUser(req)}`);
+    return send(res, 200, { ok: true, id, filename: name, replaced: replaced.includes(name) });
   }
 
   // Which forms are open, kept in memory only: the alert that a report or project
@@ -498,12 +726,14 @@ function createApi({ dataDir, reportsDir, auth = null, origin = null, maxBody = 
       const [, , id, file] = parts;
       const type = file.endsWith('.pdf') ? 'application/pdf' : 'application/json; charset=utf-8';
       if (!known(id) || safeName(file, file.endsWith('.pdf') ? '.pdf' : '.json') !== file) send(res, 404, { error: 'not found' });
-      else sendFile(res, path.join(reportsDir, id, file), type, !file.endsWith('.pdf'));
+      else sendFile(res, path.join(reportsDir, id, file), type, !file.endsWith('.pdf'), file.endsWith('.pdf') ? pdfName(id, file) : null);
     } else if (req.method === 'POST' && parts[0] === 'api' && parts[1] === 'reports' &&
                (parts.length === 3 || (parts.length === 4 && parts[3] === 'pdf'))) {
       save(req, res, parts[2], parts.length === 4).catch(fail('save'));
     } else if (req.method === 'POST' && parts.length === 4 && parts[0] === 'api' && parts[1] === 'reports' && parts[3] === 'lock') {
       lock(req, res, parts[2]).catch(fail('lock'));
+    } else if (req.method === 'POST' && route === 'api/import') {
+      importFile(req, res).catch(fail('import'));
     } else if (parts[0] === 'api') {
       send(res, 404, { error: 'no such call' });
     } else {
@@ -513,4 +743,4 @@ function createApi({ dataDir, reportsDir, auth = null, origin = null, maxBody = 
   };
 }
 
-module.exports = { createApi, safeName, cleanProject, summaryOf };
+module.exports = { createApi, safeName, cleanProject, cleanReport, summaryOf };
